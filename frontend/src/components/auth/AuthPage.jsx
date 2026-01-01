@@ -14,18 +14,26 @@ import {
   Moon,
   Sun,
   Loader2,
+  Lock,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 export function AuthPage() {
   const navigate = useNavigate();
-  const { signInWithGoogle, signInWithGithub, signInWithEmail } = useAuth();
+  const { signInWithGoogle, signInWithGithub, signInWithPassword, signUpWithPassword } = useAuth();
   const toast = useToast();
+  
+  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isDark, setIsDark] = useState(false);
 
   React.useEffect(() => {
-    // Check if dark mode is enabled
     const isDarkMode = document.documentElement.classList.contains('dark');
     setIsDark(isDarkMode);
   }, []);
@@ -72,24 +80,55 @@ export function AuthPage() {
     }
   };
 
-  const handleEmailSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email) {
-      toast.error('Please enter your email');
+
+    if (!email || !password) {
+      toast.error('Please fill in all fields');
       return;
+    }
+
+    if (!isLogin) {
+      // Signup validation
+      if (password.length < 6) {
+        toast.error('Password must be at least 6 characters');
+        return;
+      }
+      if (password !== confirmPassword) {
+        toast.error('Passwords do not match');
+        return;
+      }
     }
 
     try {
       setLoading(true);
-      await signInWithEmail(email);
-      toast.success('Check your email for the login link!');
-      setEmail('');
+      
+      if (isLogin) {
+        // Login
+        await signInWithPassword(email, password);
+        toast.success('Logged in successfully!');
+        navigate('/dashboard');
+      } else {
+        // Signup
+        await signUpWithPassword(email, password);
+        toast.success('Account created! Please check your email to verify.');
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+        setIsLogin(true);
+      }
     } catch (error) {
-      console.error('Email login error:', error);
-      toast.error(error.message || 'Failed to send login email');
+      console.error('Auth error:', error);
+      toast.error(error.message || `Failed to ${isLogin ? 'login' : 'sign up'}`);
     } finally {
       setLoading(false);
     }
+  };
+
+  const switchMode = () => {
+    setIsLogin(!isLogin);
+    setPassword('');
+    setConfirmPassword('');
   };
 
   return (
@@ -110,11 +149,23 @@ export function AuthPage() {
           <Grid className="size-6" />
           <p className="text-xl font-semibold">Notification Hub</p>
         </div>
+        <div className="z-10 mt-auto">
+          <blockquote className="space-y-2">
+            <p className="text-xl">
+              &ldquo;This Platform has helped me to save time and serve my
+              clients faster than ever before.&rdquo;
+            </p>
+            <footer className="font-mono text-sm font-semibold">
+              ~ Ali Hassan
+            </footer>
+          </blockquote>
+        </div>
         <div className="absolute inset-0">
           <FloatingPaths position={1} />
           <FloatingPaths position={-1} />
         </div>
       </div>
+
       <div className="relative flex min-h-screen flex-col justify-center p-4">
         <div
           aria-hidden
@@ -124,25 +175,49 @@ export function AuthPage() {
           <div className="bg-[radial-gradient(50%_50%_at_50%_50%,hsl(var(--foreground)/0.04)_0,hsl(var(--foreground)/0.01)_80%,transparent_100%)] absolute top-0 right-0 h-[80rem] w-[15rem] [translate:5%_-50%] rounded-full" />
           <div className="bg-[radial-gradient(50%_50%_at_50%_50%,hsl(var(--foreground)/0.04)_0,hsl(var(--foreground)/0.01)_80%,transparent_100%)] absolute top-0 right-0 h-[80rem] w-[15rem] -translate-y-[21.875rem] rounded-full" />
         </div>
+
         <Button variant="ghost" className="absolute top-7 left-5" asChild>
           <a href="/">
             <ChevronLeft className="size-4 me-2" />
             Home
           </a>
         </Button>
+
         <div className="mx-auto space-y-4 sm:w-[28rem]">
           <div className="flex items-center gap-2 lg:hidden">
             <Grid className="size-6" />
             <p className="text-xl font-semibold">Notification Hub</p>
           </div>
+
+          {/* Login/Signup Toggle */}
           <div className="flex flex-col space-y-1">
-            <h1 className="font-heading text-2xl font-bold tracking-wide">
-              Sign In or Join Now!
-            </h1>
+            <div className="flex items-center gap-4 mb-2">
+              <button
+                onClick={() => setIsLogin(true)}
+                className={`text-2xl font-bold tracking-wide transition-colors ${
+                  isLogin ? 'text-foreground' : 'text-muted-foreground'
+                }`}
+              >
+                Login
+              </button>
+              <span className="text-muted-foreground">|</span>
+              <button
+                onClick={() => setIsLogin(false)}
+                className={`text-2xl font-bold tracking-wide transition-colors ${
+                  !isLogin ? 'text-foreground' : 'text-muted-foreground'
+                }`}
+              >
+                Sign Up
+              </button>
+            </div>
             <p className="text-muted-foreground text-base">
-              Login or create your account.
+              {isLogin 
+                ? 'Welcome back! Login to your account.' 
+                : 'Create a new account to get started.'}
             </p>
           </div>
+
+          {/* OAuth Buttons */}
           <div className="space-y-2">
             <Button 
               type="button" 
@@ -182,37 +257,129 @@ export function AuthPage() {
 
           <AuthSeparator />
 
-          <form className="space-y-2" onSubmit={handleEmailSubmit}>
-            <p className="text-muted-foreground text-start text-xs">
-              Enter your email address to sign in or create an account
-            </p>
-            <div className="relative h-max">
-              <Input
-                placeholder="your.email@example.com"
-                className="peer ps-9"
-                type="email"
-                name="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-                required
-              />
-              <div className="text-muted-foreground pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 peer-disabled:opacity-50">
-                <AtSign className="size-4" aria-hidden="true" />
+          {/* Email/Password Form */}
+          <form className="space-y-3" onSubmit={handleSubmit}>
+            {/* Email Input */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Email</label>
+              <div className="relative h-max">
+                <Input
+                  placeholder="your.email@example.com"
+                  className="peer ps-9"
+                  type="email"
+                  name="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  required
+                />
+                <div className="text-muted-foreground pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 peer-disabled:opacity-50">
+                  <AtSign className="size-4" aria-hidden="true" />
+                </div>
               </div>
             </div>
 
+            {/* Password Input */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Password</label>
+              <div className="relative h-max">
+                <Input
+                  placeholder={isLogin ? "Enter your password" : "Create a password (min 6 characters)"}
+                  className="peer ps-9 pe-9"
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                  required
+                />
+                <div className="text-muted-foreground pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 peer-disabled:opacity-50">
+                  <Lock className="size-4" aria-hidden="true" />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-muted-foreground absolute inset-y-0 end-0 flex items-center justify-center pe-3 hover:text-foreground"
+                >
+                  {showPassword ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password Input (Signup Only) */}
+            {!isLogin && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Confirm Password</label>
+                <div className="relative h-max">
+                  <Input
+                    placeholder="Confirm your password"
+                    className="peer ps-9 pe-9"
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={loading}
+                    required
+                  />
+                  <div className="text-muted-foreground pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 peer-disabled:opacity-50">
+                    <Lock className="size-4" aria-hidden="true" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="text-muted-foreground absolute inset-y-0 end-0 flex items-center justify-center pe-3 hover:text-foreground"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Forgot Password (Login Only) */}
+            {isLogin && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  className="text-sm text-primary hover:underline"
+                  onClick={() => toast.info('Password reset coming soon!')}
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
+
+            {/* Submit Button */}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="size-4 me-2 animate-spin" />
-                  <span>Sending...</span>
+                  <span>{isLogin ? 'Logging in...' : 'Creating account...'}</span>
                 </>
               ) : (
-                <span>Continue With Email</span>
+                <span>{isLogin ? 'Login' : 'Create Account'}</span>
               )}
             </Button>
           </form>
+
+          {/* Switch Mode */}
+          <p className="text-center text-sm text-muted-foreground">
+            {isLogin ? "Don't have an account? " : "Already have an account? "}
+            <button
+              onClick={switchMode}
+              className="text-primary hover:underline font-medium"
+            >
+              {isLogin ? 'Sign up' : 'Login'}
+            </button>
+          </p>
+
           <p className="text-muted-foreground mt-8 text-sm">
             By clicking continue, you agree to our{' '}
             <a
