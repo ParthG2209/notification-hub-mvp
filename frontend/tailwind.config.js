@@ -15,6 +15,12 @@ export default {
     },
     extend: {
       colors: {
+        // --- Custom Agency Colors Added Here ---
+        agency: {
+          dark: '#00020f',
+          light: '#00041f',
+        },
+        // ---------------------------------------
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
