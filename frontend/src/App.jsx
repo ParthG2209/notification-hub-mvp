@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Integrations from './pages/Integrations';
-import OAuthCallback from './pages/OAuthCallback';
+import OAuthCallback from './pages/0AuthCallback';
 import { AuthProvider } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { IntegrationProvider } from './contexts/IntegrationContext';
