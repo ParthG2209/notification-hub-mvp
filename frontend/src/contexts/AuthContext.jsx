@@ -34,6 +34,7 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // OAuth Sign In
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -54,6 +55,30 @@ export const AuthProvider = ({ children }) => {
     if (error) throw error;
   };
 
+  // Email/Password Sign In
+  const signInWithPassword = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+    if (error) throw error;
+    return data;
+  };
+
+  // Email/Password Sign Up
+  const signUpWithPassword = async (email, password) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`
+      }
+    });
+    if (error) throw error;
+    return data;
+  };
+
+  // Magic Link Sign In (OTP)
   const signInWithEmail = async (email) => {
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -64,6 +89,23 @@ export const AuthProvider = ({ children }) => {
     if (error) throw error;
   };
 
+  // Password Reset
+  const resetPassword = async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`
+    });
+    if (error) throw error;
+  };
+
+  // Update Password
+  const updatePassword = async (newPassword) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+    if (error) throw error;
+  };
+
+  // Sign Out
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
@@ -75,7 +117,11 @@ export const AuthProvider = ({ children }) => {
     loading,
     signInWithGoogle,
     signInWithGithub,
+    signInWithPassword,
+    signUpWithPassword,
     signInWithEmail,
+    resetPassword,
+    updatePassword,
     signOut
   };
 
