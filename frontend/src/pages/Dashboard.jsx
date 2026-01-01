@@ -22,7 +22,6 @@ export default function Dashboard() {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    // CHANGE APPLIED HERE: bg-agency-gradient and text-white
     <div className="min-h-screen bg-agency-gradient text-white">
       {/* Header */}
       <header className="border-b border-white/10 bg-black/20 backdrop-blur-md">
@@ -33,11 +32,19 @@ export default function Dashboard() {
               <h1 className="text-2xl font-bold">Notification Hub</h1>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" className="text-black" onClick={() => navigate('/integrations')}>
+              <Button 
+                variant="outline" 
+                className="text-white border-white/20 hover:bg-white/10 hover:text-white" 
+                onClick={() => navigate('/integrations')}
+              >
                 <Settings className="h-4 w-4 mr-2" />
                 Integrations
               </Button>
-              <Button variant="ghost" className="hover:text-white/80" onClick={handleSignOut}>
+              <Button 
+                variant="ghost" 
+                className="text-white hover:text-white hover:bg-white/10" 
+                onClick={handleSignOut}
+              >
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
               </Button>
@@ -73,7 +80,7 @@ export default function Dashboard() {
               <Button
                 variant={filter === 'all' ? 'default' : 'outline'}
                 size="sm"
-                className={filter !== 'all' ? 'text-black' : ''}
+                className={filter !== 'all' ? 'text-white border-white/20 hover:bg-white/10 hover:text-white' : ''}
                 onClick={() => setFilter('all')}
               >
                 All
@@ -81,7 +88,7 @@ export default function Dashboard() {
               <Button
                 variant={filter === 'unread' ? 'default' : 'outline'}
                 size="sm"
-                className={filter !== 'unread' ? 'text-black' : ''}
+                className={filter !== 'unread' ? 'text-white border-white/20 hover:bg-white/10 hover:text-white' : ''}
                 onClick={() => setFilter('unread')}
               >
                 Unread
@@ -89,14 +96,19 @@ export default function Dashboard() {
               <Button
                 variant={filter === 'read' ? 'default' : 'outline'}
                 size="sm"
-                className={filter !== 'read' ? 'text-black' : ''}
+                className={filter !== 'read' ? 'text-white border-white/20 hover:bg-white/10 hover:text-white' : ''}
                 onClick={() => setFilter('read')}
               >
                 Read
               </Button>
             </div>
             {unreadCount > 0 && (
-              <Button variant="ghost" size="sm" className="hover:text-white/80" onClick={markAllAsRead}>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-white hover:text-white hover:bg-white/10" 
+                onClick={markAllAsRead}
+              >
                 Mark all as read
               </Button>
             )}
