@@ -1,43 +1,113 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../common/Toast';
 import {
-  Grid2x2Plus,
+  Grid,
   Apple,
   AtSign,
   ChevronLeft,
   Github,
+  Moon,
+  Sun,
+  Loader2,
 } from 'lucide-react';
 
 export function AuthPage() {
-  const handleGoogleLogin = () => {
-    // TODO: Implement Google OAuth
-    console.log('Google login clicked');
+  const navigate = useNavigate();
+  const { signInWithGoogle, signInWithGithub, signInWithEmail } = useAuth();
+  const toast = useToast();
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [isDark, setIsDark] = useState(false);
+
+  React.useEffect(() => {
+    // Check if dark mode is enabled
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    setIsDark(isDarkMode);
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = !isDark;
+    setIsDark(newTheme);
+    if (newTheme) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+      await signInWithGoogle();
+      toast.success('Redirecting to Google...');
+    } catch (error) {
+      console.error('Google login error:', error);
+      toast.error(error.message || 'Failed to sign in with Google');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAppleLogin = () => {
-    // TODO: Implement Apple OAuth
-    console.log('Apple login clicked');
+    toast.info('Apple Sign-In coming soon!');
   };
 
-  const handleGithubLogin = () => {
-    // TODO: Implement GitHub OAuth
-    console.log('GitHub login clicked');
+  const handleGithubLogin = async () => {
+    try {
+      setLoading(true);
+      await signInWithGithub();
+      toast.success('Redirecting to GitHub...');
+    } catch (error) {
+      console.error('GitHub login error:', error);
+      toast.error(error.message || 'Failed to sign in with GitHub');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleEmailSubmit = (e) => {
+  const handleEmailSubmit = async (e) => {
     e.preventDefault();
-    // TODO: Implement email authentication
-    console.log('Email submit clicked');
+    if (!email) {
+      toast.error('Please enter your email');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await signInWithEmail(email);
+      toast.success('Check your email for the login link!');
+      setEmail('');
+    } catch (error) {
+      console.error('Email login error:', error);
+      toast.error(error.message || 'Failed to send login email');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <main className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2">
+      {/* Theme Toggle Button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-7 right-5 z-50"
+        onClick={toggleTheme}
+      >
+        {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+      </Button>
+
       <div className="bg-muted/60 relative hidden h-full flex-col border-r p-10 lg:flex">
         <div className="from-background absolute inset-0 z-10 bg-gradient-to-t to-transparent" />
         <div className="z-10 flex items-center gap-2">
-          <Grid2x2Plus className="size-6" />
+          <Grid className="size-6" />
           <p className="text-xl font-semibold">Notification Hub</p>
         </div>
         <div className="z-10 mt-auto">
@@ -73,7 +143,7 @@ export function AuthPage() {
         </Button>
         <div className="mx-auto space-y-4 sm:w-[28rem]">
           <div className="flex items-center gap-2 lg:hidden">
-            <Grid2x2Plus className="size-6" />
+            <Grid className="size-6" />
             <p className="text-xl font-semibold">Notification Hub</p>
           </div>
           <div className="flex flex-col space-y-1">
@@ -85,15 +155,37 @@ export function AuthPage() {
             </p>
           </div>
           <div className="space-y-2">
-            <Button type="button" size="lg" className="w-full" onClick={handleGoogleLogin}>
-              <GoogleIcon className="size-4 me-2" />
+            <Button 
+              type="button" 
+              size="lg" 
+              className="w-full" 
+              onClick={handleGoogleLogin}
+              disabled={loading}
+            >
+              {loading ? (
+                <Loader2 className="size-4 me-2 animate-spin" />
+              ) : (
+                <GoogleIcon className="size-4 me-2" />
+              )}
               Continue with Google
             </Button>
-            <Button type="button" size="lg" className="w-full" onClick={handleAppleLogin}>
+            <Button 
+              type="button" 
+              size="lg" 
+              className="w-full" 
+              onClick={handleAppleLogin}
+              disabled={loading}
+            >
               <Apple className="size-4 me-2" />
               Continue with Apple
             </Button>
-            <Button type="button" size="lg" className="w-full" onClick={handleGithubLogin}>
+            <Button 
+              type="button" 
+              size="lg" 
+              className="w-full" 
+              onClick={handleGithubLogin}
+              disabled={loading}
+            >
               <Github className="size-4 me-2" />
               Continue with GitHub
             </Button>
@@ -111,6 +203,9 @@ export function AuthPage() {
                 className="peer ps-9"
                 type="email"
                 name="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
                 required
               />
               <div className="text-muted-foreground pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 peer-disabled:opacity-50">
@@ -118,8 +213,15 @@ export function AuthPage() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full">
-              <span>Continue With Email</span>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="size-4 me-2 animate-spin" />
+                  <span>Sending...</span>
+                </>
+              ) : (
+                <span>Continue With Email</span>
+              )}
             </Button>
           </form>
           <p className="text-muted-foreground mt-8 text-sm">
