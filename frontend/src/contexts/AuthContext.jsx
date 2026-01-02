@@ -26,6 +26,7 @@ export const AuthProvider = ({ children }) => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('Auth state changed:', _event, session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -36,23 +37,33 @@ export const AuthProvider = ({ children }) => {
 
   // OAuth Sign In
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    // Clear any stored integration type to ensure this is treated as auth
+    sessionStorage.removeItem('oauth_integration');
+    
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`
+        redirectTo: `${window.location.origin}/auth/callback`,
+        skipBrowserRedirect: false
       }
     });
     if (error) throw error;
+    return data;
   };
 
   const signInWithGithub = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    // Clear any stored integration type to ensure this is treated as auth
+    sessionStorage.removeItem('oauth_integration');
+    
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`
+        redirectTo: `${window.location.origin}/auth/callback`,
+        skipBrowserRedirect: false
       }
     });
     if (error) throw error;
+    return data;
   };
 
   // Email/Password Sign In
