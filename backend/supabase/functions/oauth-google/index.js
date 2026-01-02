@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
       return createErrorResponse(bodyValidation.error, 400);
     }
 
-    const { code, integration_type } = body;
+    const { code, integration_type, redirect_uri } = body;
 
     // Validate authorization code
     const codeValidation = validateOAuthCode(code);
@@ -43,6 +43,11 @@ Deno.serve(async (req) => {
       return createErrorResponse('Invalid integration type for Google OAuth', 400);
     }
 
+    // Use the redirect_uri from the request, fallback to FRONTEND_URL
+    const actualRedirectUri = redirect_uri || `${FRONTEND_URL}/auth/callback`;
+
+    console.log('Using redirect URI:', actualRedirectUri);
+
     // Exchange authorization code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -53,7 +58,7 @@ Deno.serve(async (req) => {
         code,
         client_id: GOOGLE_CLIENT_ID,
         client_secret: GOOGLE_CLIENT_SECRET,
-        redirect_uri: `${FRONTEND_URL}/auth/callback`,
+        redirect_uri: actualRedirectUri,
         grant_type: 'authorization_code',
       }),
     });
