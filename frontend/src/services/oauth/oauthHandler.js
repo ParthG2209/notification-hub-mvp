@@ -1,31 +1,39 @@
-// frontend/src/services/oauth/oauthHandler.js
-
+// OAuth Configuration with environment variables
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const REDIRECT_URI = import.meta.env.VITE_OAUTH_REDIRECT_URI;
+const REDIRECT_URI = import.meta.env.VITE_OAUTH_REDIRECT_URI || 'http://localhost:3000/auth/callback';
+
+// OAuth Client IDs from environment variables
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const SLACK_CLIENT_ID = import.meta.env.VITE_SLACK_CLIENT_ID;
+const HUBSPOT_CLIENT_ID = import.meta.env.VITE_HUBSPOT_CLIENT_ID;
 
 // OAuth Configuration
 const OAUTH_CONFIGS = {
   gmail: {
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-    clientId: 'YOUR_GOOGLE_CLIENT_ID', // You'll need to expose this
+    clientId: GOOGLE_CLIENT_ID,
     scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/userinfo.email',
     responseType: 'code',
+    accessType: 'offline',
+    prompt: 'consent',
   },
   'google-drive': {
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-    clientId: 'YOUR_GOOGLE_CLIENT_ID',
+    clientId: GOOGLE_CLIENT_ID,
     scope: 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email',
     responseType: 'code',
+    accessType: 'offline',
+    prompt: 'consent',
   },
   slack: {
     authUrl: 'https://slack.com/oauth/v2/authorize',
-    clientId: 'YOUR_SLACK_CLIENT_ID',
+    clientId: SLACK_CLIENT_ID,
     scope: 'channels:history,channels:read,chat:write,im:history,users:read',
     responseType: 'code',
   },
   hubspot: {
     authUrl: 'https://app.hubspot.com/oauth/authorize',
-    clientId: 'YOUR_HUBSPOT_CLIENT_ID',
+    clientId: HUBSPOT_CLIENT_ID,
     scope: 'crm.objects.contacts.read crm.objects.deals.read crm.objects.companies.read',
     responseType: 'code',
   },
@@ -41,18 +49,26 @@ export const getOAuthUrl = (integrationType) => {
     throw new Error(`Unknown integration type: ${integrationType}`);
   }
 
+  if (!config.clientId) {
+    throw new Error(`Client ID not configured for ${integrationType}. Please add VITE_${integrationType.toUpperCase().replace('-', '_')}_CLIENT_ID to your .env.local file.`);
+  }
+
   const params = new URLSearchParams({
     client_id: config.clientId,
     redirect_uri: REDIRECT_URI,
     response_type: config.responseType,
     scope: config.scope,
-    access_type: 'offline', // For Google to get refresh token
-    prompt: 'consent', // Force consent screen to get refresh token
     state: JSON.stringify({
       integration: integrationType,
       timestamp: Date.now(),
     }),
   });
+
+  // Add Google-specific parameters
+  if (integrationType === 'gmail' || integrationType === 'google-drive') {
+    params.append('access_type', config.accessType);
+    params.append('prompt', config.prompt);
+  }
 
   return `${config.authUrl}?${params.toString()}`;
 };
@@ -69,15 +85,23 @@ export const handleOAuthCallback = async (code, state, supabase) => {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError || !session) {
-      throw new Error('Not authenticated');
+      throw new Error('Not authenticated. Please log in first.');
     }
 
-    // Call appropriate Edge Function to exchange code for tokens
-    const edgeFunctionUrl = `${SUPABASE_URL}/functions/v1/oauth-${
-      integrationType === 'google-drive' || integrationType === 'gmail' 
-        ? 'google' 
-        : integrationType
-    }`;
+    // Determine which edge function to call
+    let edgeFunctionName;
+    if (integrationType === 'google-drive' || integrationType === 'gmail') {
+      edgeFunctionName = 'oauth-google';
+    } else if (integrationType === 'slack') {
+      edgeFunctionName = 'oauth-slack';
+    } else if (integrationType === 'hubspot') {
+      edgeFunctionName = 'oauth-hubspot';
+    } else {
+      throw new Error(`Unsupported integration type: ${integrationType}`);
+    }
+
+    // Call Edge Function to exchange code for tokens
+    const edgeFunctionUrl = `${SUPABASE_URL}/functions/v1/${edgeFunctionName}`;
 
     const response = await fetch(edgeFunctionUrl, {
       method: 'POST',
@@ -93,7 +117,7 @@ export const handleOAuthCallback = async (code, state, supabase) => {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'OAuth exchange failed');
+      throw new Error(error.error || error.message || 'OAuth exchange failed');
     }
 
     const data = await response.json();
@@ -108,11 +132,16 @@ export const handleOAuthCallback = async (code, state, supabase) => {
  * Initiate OAuth flow
  */
 export const initiateOAuth = (integrationType) => {
-  const authUrl = getOAuthUrl(integrationType);
-  
-  // Store integration type in sessionStorage for callback
-  sessionStorage.setItem('oauth_integration', integrationType);
-  
-  // Redirect to OAuth provider
-  window.location.href = authUrl;
+  try {
+    const authUrl = getOAuthUrl(integrationType);
+    
+    // Store integration type in sessionStorage for callback
+    sessionStorage.setItem('oauth_integration', integrationType);
+    
+    // Redirect to OAuth provider
+    window.location.href = authUrl;
+  } catch (error) {
+    console.error('Failed to initiate OAuth:', error);
+    throw error;
+  }
 };
