@@ -1,6 +1,6 @@
 // Token Refresh Function (Cron Job)
 // This function should be called periodically (e.g., every hour) to refresh expired tokens
-import { corsHeaders, handleCors, createResponse, createErrorResponse } from '../_shared/cors.js';
+import { corsHeaders, handleCors, createResponse, createErrorResponse } from '../_shared/cors.ts/index.js';
 import { supabaseAdmin } from '../_shared/supabase.js';
 import { encryptToken, decryptToken, maskToken } from '../_shared/encryption.js';
 

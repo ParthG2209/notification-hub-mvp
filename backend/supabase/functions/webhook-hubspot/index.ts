@@ -1,5 +1,5 @@
 // HubSpot Webhook Handler
-import { corsHeaders, handleCors, createResponse, createErrorResponse } from '../_shared/cors.js';
+import { corsHeaders, handleCors, createResponse, createErrorResponse } from '../_shared/cors.ts/index.js';
 import { supabaseAdmin } from '../_shared/supabase.js';
 
 Deno.serve(async (req) => {

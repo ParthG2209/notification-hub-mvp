@@ -1,5 +1,5 @@
 // Google OAuth Handler (Gmail + Google Drive)
-import { corsHeaders, handleCors, createResponse, createErrorResponse } from '../_shared/cors.js';
+import { corsHeaders, handleCors, createResponse, createErrorResponse } from '../_shared/cors.ts/index.js';
 import { supabaseAdmin, getUserFromRequest } from '../_shared/supabase.js';
 import { validateOAuthCode, validateIntegrationType, validateRequestBody } from '../_shared/validators.js';
 import { encryptToken, maskToken } from '../_shared/encryption.js';
