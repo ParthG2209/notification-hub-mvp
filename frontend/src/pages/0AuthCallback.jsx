@@ -30,24 +30,45 @@ export default function OAuthCallback() {
         const storedIntegration = sessionStorage.getItem('oauth_integration');
         
         // Case 1: Supabase Social Auth (Google/GitHub login for app authentication)
-        if (!storedIntegration) {
-          // This is a Supabase Auth callback
+        // This happens when there's NO stored integration and we have a hash fragment
+        if (!storedIntegration && (window.location.hash || !code)) {
+          console.log('Handling Supabase Auth callback');
+          
+          // Wait a bit for Supabase to process the auth
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
           const { data: { session }, error: sessionError } = await supabase.auth.getSession();
           
-          if (sessionError) throw sessionError;
+          if (sessionError) {
+            console.error('Session error:', sessionError);
+            throw sessionError;
+          }
           
           if (session) {
+            console.log('Session found, redirecting to dashboard');
             setStatus('success');
             toast.success('Signed in successfully!');
             setTimeout(() => navigate('/dashboard', { replace: true }), 1500);
           } else {
-            throw new Error('No session found after authentication');
+            // Try one more time after a longer delay
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            const { data: { session: retrySession } } = await supabase.auth.getSession();
+            
+            if (retrySession) {
+              console.log('Session found on retry, redirecting to dashboard');
+              setStatus('success');
+              toast.success('Signed in successfully!');
+              setTimeout(() => navigate('/dashboard', { replace: true }), 1500);
+            } else {
+              throw new Error('No session found after authentication');
+            }
           }
           return;
         }
 
         // Case 2: Integration OAuth (Gmail, Slack, HubSpot, Google Drive)
-        if (code && state) {
+        if (code && state && storedIntegration) {
+          console.log('Handling Integration OAuth callback for:', storedIntegration);
           setStatus('processing');
           
           // Make sure user is authenticated
@@ -65,8 +86,23 @@ export default function OAuthCallback() {
           toast.success(result.message || 'Integration connected successfully!');
           
           setTimeout(() => navigate('/integrations', { replace: true }), 1500);
+        } else if (!storedIntegration && code) {
+          // Edge case: we have a code but no stored integration
+          // This might be a Supabase auth callback with code instead of hash
+          console.log('Edge case: code without stored integration');
+          
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session) {
+            setStatus('success');
+            toast.success('Signed in successfully!');
+            setTimeout(() => navigate('/dashboard', { replace: true }), 1500);
+          } else {
+            throw new Error('Authentication incomplete');
+          }
         } else {
-          throw new Error('Missing required OAuth parameters');
+          throw new Error('Invalid OAuth callback parameters');
         }
       } catch (error) {
         console.error('OAuth callback error:', error);
