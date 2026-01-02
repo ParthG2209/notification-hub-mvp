@@ -9,7 +9,7 @@ export const corsHeaders = {
   'Access-Control-Max-Age': '86400',
 };
 
-export function handleCors(req) {
+export function handleCors(req: Request): Response | null {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -17,7 +17,7 @@ export function handleCors(req) {
   return null;
 }
 
-export function createResponse(data, status = 200) {
+export function createResponse(data: any, status = 200): Response {
   return new Response(
     JSON.stringify(data),
     {
@@ -30,8 +30,8 @@ export function createResponse(data, status = 200) {
   );
 }
 
-export function createErrorResponse(message, status = 400, details = null) {
-  const error = {
+export function createErrorResponse(message: string, status = 400, details: any = null): Response {
+  const error: any = {
     error: message,
     status,
   };

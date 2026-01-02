@@ -1,14 +1,14 @@
 // Google OAuth Handler (Gmail + Google Drive)
-import { corsHeaders, handleCors, createResponse, createErrorResponse } from '../_shared/cors.ts/index.js';
-import { supabaseAdmin, getUserFromRequest } from '../_shared/supabase.js';
-import { validateOAuthCode, validateIntegrationType, validateRequestBody } from '../_shared/validators.js';
-import { encryptToken, maskToken } from '../_shared/encryption.js';
+import { handleCors, createResponse, createErrorResponse } from '../_shared/cors.ts';
+import { supabaseAdmin, getUserFromRequest } from '../_shared/supabase.ts';
+import { validateOAuthCode, validateRequestBody } from '../_shared/validators.ts';
+import { encryptToken, maskToken } from '../_shared/encryption.ts';
 
 const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
 const FRONTEND_URL = Deno.env.get('FRONTEND_URL') || 'http://localhost:3000';
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     // Validate request body
     const bodyValidation = validateRequestBody(body, ['code', 'integration_type']);
     if (!bodyValidation.valid) {
-      return createErrorResponse(bodyValidation.error, 400);
+      return createErrorResponse(bodyValidation.error!, 400);
     }
 
     const { code, integration_type, redirect_uri } = body;
@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     // Validate authorization code
     const codeValidation = validateOAuthCode(code);
     if (!codeValidation.valid) {
-      return createErrorResponse(codeValidation.error, 400);
+      return createErrorResponse(codeValidation.error!, 400);
     }
 
     // Validate integration type (gmail or google-drive)
@@ -56,8 +56,8 @@ Deno.serve(async (req) => {
       },
       body: new URLSearchParams({
         code,
-        client_id: GOOGLE_CLIENT_ID,
-        client_secret: GOOGLE_CLIENT_SECRET,
+        client_id: GOOGLE_CLIENT_ID!,
+        client_secret: GOOGLE_CLIENT_SECRET!,
         redirect_uri: actualRedirectUri,
         grant_type: 'authorization_code',
       }),
@@ -130,12 +130,12 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('OAuth error:', error);
-    return createErrorResponse('Internal server error', 500, error.message);
+    return createErrorResponse('Internal server error', 500, (error as Error).message);
   }
 });
 
 // Register webhook for Google Drive notifications
-async function registerDriveWebhook(accessToken, userId) {
+async function registerDriveWebhook(accessToken: string, userId: string): Promise<any> {
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
   const webhookUrl = `${SUPABASE_URL}/functions/v1/webhook-google-drive`;
 

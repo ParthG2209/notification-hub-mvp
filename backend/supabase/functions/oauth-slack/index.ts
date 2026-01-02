@@ -1,14 +1,14 @@
 // Slack OAuth Handler
-import { corsHeaders, handleCors, createResponse, createErrorResponse } from '../_shared/cors.ts/index.js';
-import { supabaseAdmin, getUserFromRequest } from '../_shared/supabase.js';
-import { validateOAuthCode, validateRequestBody } from '../_shared/validators.js';
-import { encryptToken, maskToken } from '../_shared/encryption.js';
+import { handleCors, createResponse, createErrorResponse } from '../_shared/cors.ts';
+import { supabaseAdmin, getUserFromRequest } from '../_shared/supabase.ts';
+import { validateOAuthCode, validateRequestBody } from '../_shared/validators.ts';
+import { encryptToken, maskToken } from '../_shared/encryption.ts';
 
 const SLACK_CLIENT_ID = Deno.env.get('SLACK_CLIENT_ID');
 const SLACK_CLIENT_SECRET = Deno.env.get('SLACK_CLIENT_SECRET');
 const FRONTEND_URL = Deno.env.get('FRONTEND_URL') || 'http://localhost:3000';
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     // Validate request body
     const bodyValidation = validateRequestBody(body, ['code']);
     if (!bodyValidation.valid) {
-      return createErrorResponse(bodyValidation.error, 400);
+      return createErrorResponse(bodyValidation.error!, 400);
     }
 
     const { code } = body;
@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     // Validate authorization code
     const codeValidation = validateOAuthCode(code);
     if (!codeValidation.valid) {
-      return createErrorResponse(codeValidation.error, 400);
+      return createErrorResponse(codeValidation.error!, 400);
     }
 
     // Exchange authorization code for tokens
@@ -46,8 +46,8 @@ Deno.serve(async (req) => {
       },
       body: new URLSearchParams({
         code,
-        client_id: SLACK_CLIENT_ID,
-        client_secret: SLACK_CLIENT_SECRET,
+        client_id: SLACK_CLIENT_ID!,
+        client_secret: SLACK_CLIENT_SECRET!,
         redirect_uri: `${FRONTEND_URL}/auth/callback`,
       }),
     });
@@ -112,6 +112,6 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('OAuth error:', error);
-    return createErrorResponse('Internal server error', 500, error.message);
+    return createErrorResponse('Internal server error', 500, (error as Error).message);
   }
 });

@@ -1,8 +1,16 @@
 // HubSpot Webhook Handler
-import { corsHeaders, handleCors, createResponse, createErrorResponse } from '../_shared/cors.ts/index.js';
-import { supabaseAdmin } from '../_shared/supabase.js';
+import { handleCors, createResponse, createErrorResponse } from '../_shared/cors.ts';
+import { supabaseAdmin } from '../_shared/supabase.ts';
 
-Deno.serve(async (req) => {
+interface HubSpotEvent {
+  subscriptionType: string;
+  objectId: number;
+  portalId: number;
+  eventId: number;
+  occurredAt?: number;
+}
+
+Deno.serve(async (req: Request) => {
   // Handle CORS
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -18,7 +26,7 @@ Deno.serve(async (req) => {
     }
 
     // Process each event
-    for (const event of payload) {
+    for (const event of payload as HubSpotEvent[]) {
       await handleHubSpotEvent(event);
     }
 
@@ -26,12 +34,12 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Webhook error:', error);
-    return createErrorResponse('Internal server error', 500, error.message);
+    return createErrorResponse('Internal server error', 500, (error as Error).message);
   }
 });
 
 // Handle HubSpot event
-async function handleHubSpotEvent(event) {
+async function handleHubSpotEvent(event: HubSpotEvent): Promise<void> {
   const { subscriptionType, objectId, portalId, eventId } = event;
 
   console.log('Processing HubSpot event:', subscriptionType, objectId);

@@ -1,14 +1,14 @@
 // HubSpot OAuth Handler
-import { corsHeaders, handleCors, createResponse, createErrorResponse } from '../_shared/cors.ts/index.js';
-import { supabaseAdmin, getUserFromRequest } from '../_shared/supabase.js';
-import { validateOAuthCode, validateRequestBody } from '../_shared/validators.js';
-import { encryptToken, maskToken } from '../_shared/encryption.js';
+import { handleCors, createResponse, createErrorResponse } from '../_shared/cors.ts';
+import { supabaseAdmin, getUserFromRequest } from '../_shared/supabase.ts';
+import { validateOAuthCode, validateRequestBody } from '../_shared/validators.ts';
+import { encryptToken, maskToken } from '../_shared/encryption.ts';
 
 const HUBSPOT_CLIENT_ID = Deno.env.get('HUBSPOT_CLIENT_ID');
 const HUBSPOT_CLIENT_SECRET = Deno.env.get('HUBSPOT_CLIENT_SECRET');
 const FRONTEND_URL = Deno.env.get('FRONTEND_URL') || 'http://localhost:3000';
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     // Validate request body
     const bodyValidation = validateRequestBody(body, ['code']);
     if (!bodyValidation.valid) {
-      return createErrorResponse(bodyValidation.error, 400);
+      return createErrorResponse(bodyValidation.error!, 400);
     }
 
     const { code } = body;
@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     // Validate authorization code
     const codeValidation = validateOAuthCode(code);
     if (!codeValidation.valid) {
-      return createErrorResponse(codeValidation.error, 400);
+      return createErrorResponse(codeValidation.error!, 400);
     }
 
     // Exchange authorization code for tokens
@@ -47,8 +47,8 @@ Deno.serve(async (req) => {
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code,
-        client_id: HUBSPOT_CLIENT_ID,
-        client_secret: HUBSPOT_CLIENT_SECRET,
+        client_id: HUBSPOT_CLIENT_ID!,
+        client_secret: HUBSPOT_CLIENT_SECRET!,
         redirect_uri: `${FRONTEND_URL}/auth/callback`,
       }),
     });
@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
     const encryptedRefreshToken = refresh_token ? encryptToken(refresh_token) : null;
 
     // Get HubSpot account info
-    let accountInfo = {};
+    let accountInfo: any = {};
     try {
       const accountResponse = await fetch('https://api.hubapi.com/account-info/v3/api-usage/daily', {
         headers: {
@@ -130,6 +130,6 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('OAuth error:', error);
-    return createErrorResponse('Internal server error', 500, error.message);
+    return createErrorResponse('Internal server error', 500, (error as Error).message);
   }
 });

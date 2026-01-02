@@ -1,9 +1,20 @@
 // Google Drive Webhook Handler
-import { corsHeaders, handleCors, createResponse, createErrorResponse } from '../_shared/cors.ts/index.js';
-import { supabaseAdmin } from '../_shared/supabase.js';
-import { decryptToken } from '../_shared/encryption.js';
+import { handleCors, createResponse, createErrorResponse } from '../_shared/cors.ts';
+import { supabaseAdmin } from '../_shared/supabase.ts';
+import { decryptToken } from '../_shared/encryption.ts';
 
-Deno.serve(async (req) => {
+interface DriveChange {
+  file?: {
+    id: string;
+    name: string;
+    mimeType: string;
+    modifiedTime: string;
+    owners: any[];
+  };
+  type?: string;
+}
+
+Deno.serve(async (req: Request) => {
   // Handle CORS
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -13,7 +24,6 @@ Deno.serve(async (req) => {
     const channelId = req.headers.get('X-Goog-Channel-ID');
     const resourceState = req.headers.get('X-Goog-Resource-State');
     const resourceId = req.headers.get('X-Goog-Resource-ID');
-    const channelToken = req.headers.get('X-Goog-Channel-Token');
 
     console.log('Drive webhook received:', {
       channelId,
@@ -59,7 +69,7 @@ Deno.serve(async (req) => {
     const accessToken = decryptToken(integration.access_token);
 
     // Fetch changed files from Google Drive API
-    const changes = await fetchDriveChanges(accessToken, resourceId);
+    const changes = await fetchDriveChanges(accessToken, resourceId || '1');
 
     // Create notifications for each change
     for (const change of changes) {
@@ -76,15 +86,15 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Webhook error:', error);
-    return createErrorResponse('Internal server error', 500, error.message);
+    return createErrorResponse('Internal server error', 500, (error as Error).message);
   }
 });
 
 // Fetch file changes from Google Drive
-async function fetchDriveChanges(accessToken, startPageToken) {
+async function fetchDriveChanges(accessToken: string, startPageToken: string): Promise<DriveChange[]> {
   try {
     const url = new URL('https://www.googleapis.com/drive/v3/changes');
-    url.searchParams.append('pageToken', startPageToken || '1');
+    url.searchParams.append('pageToken', startPageToken);
     url.searchParams.append('pageSize', '100');
     url.searchParams.append('fields', 'changes(file(id,name,mimeType,modifiedTime,owners)),newStartPageToken');
 
@@ -107,7 +117,7 @@ async function fetchDriveChanges(accessToken, startPageToken) {
 }
 
 // Create notification for Drive change
-async function createDriveNotification(userId, integrationId, change) {
+async function createDriveNotification(userId: string, integrationId: string, change: DriveChange): Promise<void> {
   const file = change.file;
   
   if (!file) {
