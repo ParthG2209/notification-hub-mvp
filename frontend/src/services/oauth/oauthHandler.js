@@ -1,6 +1,18 @@
-// OAuth Configuration with environment variables
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const REDIRECT_URI = import.meta.env.VITE_OAUTH_REDIRECT_URI || 'http://localhost:3000/auth/callback';
+
+// Dynamically determine redirect URI based on current domain
+const getRedirectUri = () => {
+  // If explicitly set in env, use that
+  if (import.meta.env.VITE_OAUTH_REDIRECT_URI) {
+    return import.meta.env.VITE_OAUTH_REDIRECT_URI;
+  }
+  
+  // Otherwise, use current origin + callback path
+  return `${window.location.origin}/auth/callback`;
+};
+
+const REDIRECT_URI = getRedirectUri();
 
 // OAuth Client IDs from environment variables
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -53,9 +65,12 @@ export const getOAuthUrl = (integrationType) => {
     throw new Error(`Client ID not configured for ${integrationType}. Please add VITE_${integrationType.toUpperCase().replace('-', '_')}_CLIENT_ID to your .env.local file.`);
   }
 
+  // Get current redirect URI dynamically
+  const redirectUri = getRedirectUri();
+
   const params = new URLSearchParams({
     client_id: config.clientId,
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: redirectUri,
     response_type: config.responseType,
     scope: config.scope,
     state: JSON.stringify({
@@ -103,6 +118,9 @@ export const handleOAuthCallback = async (code, state, supabase) => {
     // Call Edge Function to exchange code for tokens
     const edgeFunctionUrl = `${SUPABASE_URL}/functions/v1/${edgeFunctionName}`;
 
+    // Get current redirect URI to send to backend
+    const redirectUri = getRedirectUri();
+
     const response = await fetch(edgeFunctionUrl, {
       method: 'POST',
       headers: {
@@ -112,6 +130,7 @@ export const handleOAuthCallback = async (code, state, supabase) => {
       body: JSON.stringify({
         code,
         integration_type: integrationType,
+        redirect_uri: redirectUri, // Send current redirect URI
       }),
     });
 
