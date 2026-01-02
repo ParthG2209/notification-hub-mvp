@@ -66,13 +66,8 @@ client_id = "env(GITHUB_CLIENT_ID)"
 secret = "env(GITHUB_CLIENT_SECRET)"
 redirect_uri = "http://localhost:54321/auth/v1/callback"
 
-[edge_functions]
-enabled = true
-ip_version = "IPv4"
-
-[[edge_functions.inspector]]
-enabled = true
-port = 8083
+# REMOVED the [edge_functions] section that was causing the error
+# Edge functions are managed differently in newer CLI versions
 
 [analytics]
 enabled = false
