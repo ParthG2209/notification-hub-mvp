@@ -1,4 +1,3 @@
-
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 // Dynamically determine redirect URI based on current domain
@@ -18,6 +17,11 @@ const REDIRECT_URI = getRedirectUri();
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const SLACK_CLIENT_ID = import.meta.env.VITE_SLACK_CLIENT_ID;
 const HUBSPOT_CLIENT_ID = import.meta.env.VITE_HUBSPOT_CLIENT_ID;
+
+// Validate that required env vars are present
+if (!GOOGLE_CLIENT_ID) {
+  console.error('VITE_GOOGLE_CLIENT_ID is not configured in .env.local');
+}
 
 // OAuth Configuration
 const OAUTH_CONFIGS = {
@@ -67,6 +71,11 @@ export const getOAuthUrl = (integrationType) => {
 
   // Get current redirect URI dynamically
   const redirectUri = getRedirectUri();
+  
+  console.log(`OAuth Config for ${integrationType}:`, {
+    redirectUri,
+    clientId: config.clientId?.substring(0, 20) + '...',
+  });
 
   const params = new URLSearchParams({
     client_id: config.clientId,
@@ -85,7 +94,10 @@ export const getOAuthUrl = (integrationType) => {
     params.append('prompt', config.prompt);
   }
 
-  return `${config.authUrl}?${params.toString()}`;
+  const authUrl = `${config.authUrl}?${params.toString()}`;
+  console.log('Generated OAuth URL:', authUrl);
+  
+  return authUrl;
 };
 
 /**
@@ -120,6 +132,12 @@ export const handleOAuthCallback = async (code, state, supabase) => {
 
     // Get current redirect URI to send to backend
     const redirectUri = getRedirectUri();
+    
+    console.log('Calling edge function:', {
+      url: edgeFunctionUrl,
+      integrationType,
+      redirectUri,
+    });
 
     const response = await fetch(edgeFunctionUrl, {
       method: 'POST',
@@ -136,6 +154,7 @@ export const handleOAuthCallback = async (code, state, supabase) => {
 
     if (!response.ok) {
       const error = await response.json();
+      console.error('Edge function error:', error);
       throw new Error(error.error || error.message || 'OAuth exchange failed');
     }
 
@@ -156,6 +175,8 @@ export const initiateOAuth = (integrationType) => {
     
     // Store integration type in sessionStorage for callback
     sessionStorage.setItem('oauth_integration', integrationType);
+    
+    console.log(`Redirecting to OAuth provider for ${integrationType}...`);
     
     // Redirect to OAuth provider
     window.location.href = authUrl;
