@@ -278,20 +278,31 @@ export default function Dashboard() {
 
               {/* Filter Buttons */}
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex gap-2 p-1 bg-white/5 rounded-xl border border-white/10">
-                  {['all', 'unread', 'read'].map((filterType) => (
-                    <button
-                      key={filterType}
-                      onClick={() => setFilter(filterType)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                        filter === filterType
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg'
-                          : 'text-gray-300 hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      {filterType.charAt(0).toUpperCase() + filterType.slice(1)}
-                    </button>
-                  ))}
+                <div className="flex gap-2">
+                  <Button
+                    variant={filter === 'all' ? 'default' : 'outline'}
+                    size="sm"
+                    className={filter !== 'all' ? 'text-white border-white/20 hover:bg-white/10 hover:text-white' : ''}
+                    onClick={() => setFilter('all')}
+                  >
+                    All
+                  </Button>
+                  <Button
+                    variant={filter === 'unread' ? 'default' : 'outline'}
+                    size="sm"
+                    className={filter !== 'unread' ? 'text-white border-white/20 hover:bg-white/10 hover:text-white' : ''}
+                    onClick={() => setFilter('unread')}
+                  >
+                    Unread
+                  </Button>
+                  <Button
+                    variant={filter === 'read' ? 'default' : 'outline'}
+                    size="sm"
+                    className={filter !== 'read' ? 'text-white border-white/20 hover:bg-white/10 hover:text-white' : ''}
+                    onClick={() => setFilter('read')}
+                  >
+                    Read
+                  </Button>
                 </div>
 
                 {unreadCount > 0 && (
@@ -299,7 +310,7 @@ export default function Dashboard() {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="text-white hover:text-white hover:bg-white/10 border border-white/10" 
+                      className="text-white hover:text-white hover:bg-white/10" 
                       onClick={markAllAsRead}
                     >
                       <CheckCheck className="h-4 w-4 mr-2" />
@@ -339,8 +350,7 @@ export default function Dashboard() {
                 </p>
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button 
-                    onClick={() => navigate('/integrations')} 
-                    className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0 shadow-xl"
+                    onClick={() => navigate('/integrations')}
                   >
                     <Settings className="h-4 w-4 mr-2" />
                     Connect Integrations
