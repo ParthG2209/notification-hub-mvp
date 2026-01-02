@@ -1,68 +1,85 @@
-// frontend/src/pages/OAuthCallback.jsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../services/supabase/client';
 import { handleOAuthCallback } from '../services/oauth/oauthHandler';
 import { useToast } from '../components/common/Toast';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function OAuthCallback() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const toast = useToast();
-  const [status, setStatus] = useState('processing'); // processing, success, error
+  const [status, setStatus] = useState('processing');
 
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Check if this is a Supabase Auth callback (Google/GitHub social login)
+        // Get URL parameters
         const error = searchParams.get('error');
         const errorDescription = searchParams.get('error_description');
+        const code = searchParams.get('code');
+        const state = searchParams.get('state');
         
+        // Handle OAuth errors
         if (error) {
           throw new Error(errorDescription || error);
         }
 
-        // Check if user is authenticated via Supabase
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        // Check what type of callback this is
+        const storedIntegration = sessionStorage.getItem('oauth_integration');
         
-        if (sessionError) throw sessionError;
-
-        // If session exists but no OAuth code, this is Supabase social auth
-        const code = searchParams.get('code');
-        const state = searchParams.get('state');
-
-        if (session && !code) {
-          // Supabase social auth successful
-          setStatus('success');
-          toast.success('Signed in successfully!');
-          setTimeout(() => navigate('/dashboard', { replace: true }), 1500);
+        // Case 1: Supabase Social Auth (Google/GitHub login for app authentication)
+        if (!storedIntegration) {
+          // This is a Supabase Auth callback
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          if (sessionError) throw sessionError;
+          
+          if (session) {
+            setStatus('success');
+            toast.success('Signed in successfully!');
+            setTimeout(() => navigate('/dashboard', { replace: true }), 1500);
+          } else {
+            throw new Error('No session found after authentication');
+          }
           return;
         }
 
-        // Handle OAuth integration callback
+        // Case 2: Integration OAuth (Gmail, Slack, HubSpot, Google Drive)
         if (code && state) {
           setStatus('processing');
+          
+          // Make sure user is authenticated
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          if (sessionError || !session) {
+            throw new Error('You must be logged in to connect integrations');
+          }
+
           const result = await handleOAuthCallback(code, state, supabase);
+          
+          // Clear stored integration type
+          sessionStorage.removeItem('oauth_integration');
           
           setStatus('success');
           toast.success(result.message || 'Integration connected successfully!');
           
-          // Redirect to integrations page after success
           setTimeout(() => navigate('/integrations', { replace: true }), 1500);
-        } else if (session) {
-          // Has session but no OAuth params, go to dashboard
-          navigate('/dashboard', { replace: true });
         } else {
-          throw new Error('Missing required parameters');
+          throw new Error('Missing required OAuth parameters');
         }
       } catch (error) {
         console.error('OAuth callback error:', error);
         setStatus('error');
         toast.error(error.message || 'Authentication failed');
         
-        // Redirect to login after error
-        setTimeout(() => navigate('/login', { replace: true }), 3000);
+        // Clear stored integration type on error
+        sessionStorage.removeItem('oauth_integration');
+        
+        // Redirect based on context
+        const storedIntegration = sessionStorage.getItem('oauth_integration');
+        const redirectPath = storedIntegration ? '/integrations' : '/login';
+        setTimeout(() => navigate(redirectPath, { replace: true }), 3000);
       }
     };
 
@@ -84,7 +101,7 @@ export default function OAuthCallback() {
               </div>
             </motion.div>
             <h2 className="text-2xl font-bold mb-2">Completing authentication...</h2>
-            <p className="text-gray-400">Please wait while we set up your integration</p>
+            <p className="text-gray-400">Please wait while we set up your connection</p>
           </>
         )}
 
@@ -118,7 +135,7 @@ export default function OAuthCallback() {
               </div>
             </motion.div>
             <h2 className="text-2xl font-bold mb-2 text-red-400">Authentication Failed</h2>
-            <p className="text-gray-400">Redirecting to login...</p>
+            <p className="text-gray-400">Redirecting...</p>
           </>
         )}
       </div>
