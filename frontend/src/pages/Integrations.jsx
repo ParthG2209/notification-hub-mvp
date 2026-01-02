@@ -1,17 +1,21 @@
+// frontend/src/pages/Integrations.jsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIntegrations } from '../contexts/IntegrationContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/common/Toast';
 import { Button } from '../components/common/Button';
-import { Bell, ArrowLeft, Check, Plus } from 'lucide-react';
+import { initiateOAuth } from '../services/oauth/oauthHandler';
+import { Bell, ArrowLeft, Check, Plus, ExternalLink } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function Integrations() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
+  const toast = useToast();
   const { 
     availableIntegrations, 
     loading, 
-    connectIntegration, 
     disconnectIntegration, 
     isConnected 
   } = useIntegrations();
@@ -25,20 +29,53 @@ export default function Integrations() {
     }
   };
 
+  const handleConnect = (integrationId) => {
+    try {
+      toast.info(`Connecting to ${integrationId}...`);
+      initiateOAuth(integrationId);
+    } catch (error) {
+      console.error('OAuth initiation error:', error);
+      toast.error('Failed to initiate OAuth flow');
+    }
+  };
+
+  const handleDisconnect = async (integrationId) => {
+    try {
+      await disconnectIntegration(integrationId);
+      toast.success(`${integrationId} disconnected successfully`);
+    } catch (error) {
+      console.error('Disconnect error:', error);
+      toast.error('Failed to disconnect integration');
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-agency-gradient text-white">
       {/* Header */}
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4">
+      <header className="border-b border-white/10 bg-black/20 backdrop-blur-xl">
+        <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => navigate('/dashboard')}
+                className="text-white hover:bg-white/10"
+              >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <Bell className="h-6 w-6" />
-              <h1 className="text-2xl font-bold">Integrations</h1>
+              <div className="flex items-center gap-3">
+                <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 p-3 rounded-xl border border-white/10">
+                  <Bell className="h-6 w-6 text-blue-400" />
+                </div>
+                <h1 className="text-2xl font-bold">Integrations</h1>
+              </div>
             </div>
-            <Button variant="ghost" onClick={handleSignOut}>
+            <Button 
+              variant="ghost" 
+              onClick={handleSignOut}
+              className="text-white hover:bg-white/10"
+            >
               Sign Out
             </Button>
           </div>
@@ -46,83 +83,125 @@ export default function Integrations() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-6 py-8">
         <div className="max-w-4xl mx-auto">
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-2">Connect Your Apps</h2>
-            <p className="text-muted-foreground">
-              Connect your favorite apps to receive notifications in one place
+          {/* Header Section */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <h2 className="text-3xl font-bold mb-2">Connect Your Apps</h2>
+            <p className="text-gray-400">
+              Connect your favorite apps to receive notifications in one unified hub
             </p>
-          </div>
+          </motion.div>
 
           {loading ? (
             <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {availableIntegrations.map((integration) => {
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {availableIntegrations.map((integration, index) => {
                 const connected = isConnected(integration.id);
                 
                 return (
-                  <div
+                  <motion.div
                     key={integration.id}
-                    className="bg-card border rounded-lg p-6 hover:shadow-lg transition-shadow"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="relative group"
                   >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`${integration.color} w-12 h-12 rounded-lg flex items-center justify-center text-2xl`}>
-                          {integration.icon}
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-lg">{integration.name}</h3>
-                          {connected && (
-                            <span className="text-xs text-green-500 flex items-center gap-1">
-                              <Check className="h-3 w-3" />
-                              Connected
-                            </span>
-                          )}
+                    {/* Glow effect */}
+                    {connected && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-2xl blur-xl"></div>
+                    )}
+                    
+                    <div className="relative bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm hover:bg-white/10 transition-all">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`${integration.color} w-14 h-14 rounded-xl flex items-center justify-center text-3xl shadow-lg`}>
+                            {integration.icon}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-xl">{integration.name}</h3>
+                            {connected && (
+                              <span className="text-xs text-green-400 flex items-center gap-1 mt-1">
+                                <Check className="h-3 w-3" />
+                                Connected
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      
+                      <p className="text-sm text-gray-300 mb-6 leading-relaxed">
+                        {integration.description}
+                      </p>
+                      
+                      {connected ? (
+                        <Button
+                          variant="outline"
+                          className="w-full text-white border-white/20 hover:bg-red-500/20 hover:border-red-500/30"
+                          onClick={() => handleDisconnect(integration.id)}
+                        >
+                          Disconnect
+                        </Button>
+                      ) : (
+                        <Button
+                          className="w-full"
+                          onClick={() => handleConnect(integration.id)}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Connect with {integration.name}
+                          <ExternalLink className="h-4 w-4 ml-2" />
+                        </Button>
+                      )}
                     </div>
-                    
-                    <p className="text-sm text-muted-foreground mb-4">
-                      {integration.description}
-                    </p>
-                    
-                    {connected ? (
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => disconnectIntegration(integration.id)}
-                      >
-                        Disconnect
-                      </Button>
-                    ) : (
-                      <Button
-                        className="w-full"
-                        onClick={() => connectIntegration(integration.id)}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Connect
-                      </Button>
-                    )}
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>
           )}
 
           {/* Info Section */}
-          <div className="mt-12 bg-muted/50 border rounded-lg p-6">
-            <h3 className="font-semibold mb-2">How it works</h3>
-            <ol className="space-y-2 text-sm text-muted-foreground">
-              <li>1. Connect your apps using OAuth authentication</li>
-              <li>2. We'll securely receive notifications from your connected apps</li>
-              <li>3. View all your notifications in one unified dashboard</li>
-              <li>4. Manage and organize your notifications easily</li>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mt-12 bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm"
+          >
+            <h3 className="font-semibold text-xl mb-4 flex items-center gap-2">
+              <span className="text-2xl">🔐</span>
+              How it works
+            </h3>
+            <ol className="space-y-3 text-gray-300">
+              <li className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center text-sm">1</span>
+                <span>Connect your apps using secure OAuth authentication</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center text-sm">2</span>
+                <span>Grant permission to access notifications (read-only access)</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center text-sm">3</span>
+                <span>We securely receive and store your notifications</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center text-sm">4</span>
+                <span>View all your notifications in one unified dashboard</span>
+              </li>
             </ol>
-          </div>
+            
+            <div className="mt-6 pt-6 border-t border-white/10">
+              <p className="text-sm text-gray-400">
+                🔒 Your data is encrypted and secure. We never store your passwords and you can disconnect at any time.
+              </p>
+            </div>
+          </motion.div>
         </div>
       </main>
     </div>
