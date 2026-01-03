@@ -1,4 +1,6 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+// frontend/src/contexts/IntegrationContext.jsx
+
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { supabase } from '../services/supabase/client';
 import { useAuth } from './AuthContext';
 
@@ -48,28 +50,64 @@ export const IntegrationProvider = ({ children }) => {
     }
   ];
 
-  useEffect(() => {
-    if (user) {
-      fetchIntegrations();
+  const fetchIntegrations = useCallback(async () => {
+    if (!user) {
+      setIntegrations([]);
+      setLoading(false);
+      return;
     }
-  }, [user]);
 
-  const fetchIntegrations = async () => {
     try {
       setLoading(true);
+      console.log('Fetching integrations for user:', user.id);
+      
       const { data, error } = await supabase
         .from('integrations')
         .select('*')
         .eq('user_id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching integrations:', error);
+        throw error;
+      }
+      
+      console.log('Integrations fetched:', data);
       setIntegrations(data || []);
     } catch (error) {
       console.error('Error fetching integrations:', error);
+      setIntegrations([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchIntegrations();
+      
+      // Set up realtime subscription to listen for integration changes
+      const channel = supabase
+        .channel('integrations-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'integrations',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Integration change detected:', payload);
+            fetchIntegrations(); // Refetch when integrations change
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user, fetchIntegrations]);
 
   const connectIntegration = async (integrationId) => {
     // This will be handled by OAuth flow
@@ -79,6 +117,8 @@ export const IntegrationProvider = ({ children }) => {
 
   const disconnectIntegration = async (integrationId) => {
     try {
+      console.log('Disconnecting integration:', integrationId);
+      
       const { error } = await supabase
         .from('integrations')
         .delete()
@@ -86,16 +126,21 @@ export const IntegrationProvider = ({ children }) => {
         .eq('integration_type', integrationId);
 
       if (error) throw error;
+      
+      console.log('Integration disconnected successfully');
       await fetchIntegrations();
     } catch (error) {
       console.error('Error disconnecting integration:', error);
+      throw error;
     }
   };
 
   const isConnected = (integrationId) => {
-    return integrations.some(
+    const connected = integrations.some(
       int => int.integration_type === integrationId && int.status === 'active'
     );
+    console.log(`Checking if ${integrationId} is connected:`, connected);
+    return connected;
   };
 
   const value = {
