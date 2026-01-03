@@ -70,8 +70,25 @@ export async function getUserFromRequest(req: Request): Promise<{ user: any | nu
       tokenPrefix: token.substring(0, 10) + '...'
     });
     
-    // Try to get user with the token
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    // Create a client with the user's token
+    const supabaseClient = createClient(
+      SUPABASE_URL!,
+      SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: authHeader,
+          },
+        },
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+    
+    // Use getUser() with the user's token - this validates the JWT
+    const { data: { user }, error } = await supabaseClient.auth.getUser();
     
     if (error) {
       console.error('Error getting user from token:', error);
