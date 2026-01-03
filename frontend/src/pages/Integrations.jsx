@@ -1,11 +1,13 @@
-import React from 'react';
+// frontend/src/pages/Integrations.jsx
+
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIntegrations } from '../contexts/IntegrationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/common/Toast';
 import { Button } from '../components/common/Button';
 import { initiateOAuth } from '../services/oauth/oauthHandler';
-import { Bell, ArrowLeft, Check, Plus, ExternalLink } from 'lucide-react';
+import { Bell, ArrowLeft, Check, Plus, ExternalLink, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Integrations() {
@@ -14,10 +16,17 @@ export default function Integrations() {
   const toast = useToast();
   const { 
     availableIntegrations, 
+    integrations,
     loading, 
     disconnectIntegration, 
-    isConnected 
+    isConnected,
+    refetch
   } = useIntegrations();
+
+  // Debug: Log integrations whenever they change
+  useEffect(() => {
+    console.log('Current integrations:', integrations);
+  }, [integrations]);
 
   const handleSignOut = async () => {
     try {
@@ -32,7 +41,6 @@ export default function Integrations() {
     try {
       console.log(`Starting connection for ${integrationId}...`);
       
-      // Ensure we have a fresh session before initiating OAuth
       const session = await ensureFreshSession();
       
       if (!session) {
@@ -44,7 +52,6 @@ export default function Integrations() {
       console.log('Fresh session confirmed, initiating OAuth...');
       toast.info(`Connecting to ${integrationId}...`);
       
-      // Small delay to ensure the toast is shown
       await new Promise(resolve => setTimeout(resolve, 500));
       
       initiateOAuth(integrationId);
@@ -61,6 +68,17 @@ export default function Integrations() {
     } catch (error) {
       console.error('Disconnect error:', error);
       toast.error('Failed to disconnect integration');
+    }
+  };
+
+  const handleRefresh = async () => {
+    try {
+      toast.info('Refreshing integrations...');
+      await refetch();
+      toast.success('Integrations refreshed!');
+    } catch (error) {
+      console.error('Refresh error:', error);
+      toast.error('Failed to refresh integrations');
     }
   };
 
@@ -86,13 +104,24 @@ export default function Integrations() {
                 <h1 className="text-2xl font-bold">Integrations</h1>
               </div>
             </div>
-            <Button 
-              variant="ghost" 
-              onClick={handleSignOut}
-              className="text-white hover:bg-white/10"
-            >
-              Sign Out
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={handleRefresh}
+                className="text-white hover:bg-white/10"
+                title="Refresh integrations"
+              >
+                <RefreshCw className="h-5 w-5" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={handleSignOut}
+                className="text-white hover:bg-white/10"
+              >
+                Sign Out
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -109,6 +138,10 @@ export default function Integrations() {
             <h2 className="text-3xl font-bold mb-2">Connect Your Apps</h2>
             <p className="text-gray-400">
               Connect your favorite apps to receive notifications in one unified hub
+            </p>
+            {/* Debug info */}
+            <p className="text-xs text-gray-500 mt-2">
+              Connected: {integrations.length} integration{integrations.length !== 1 ? 's' : ''}
             </p>
           </motion.div>
 
