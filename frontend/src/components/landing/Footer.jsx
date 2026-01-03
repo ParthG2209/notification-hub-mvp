@@ -5,7 +5,7 @@ const Footer = () => {
   return (
     <footer className="border-t border-white/10 bg-black">
       <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
@@ -58,13 +58,13 @@ const Footer = () => {
                 </a>
               </li>
               <li>
-                <a href="#integrations" className="text-gray-400 hover:text-white transition-colors">
-                  Integrations
+                <a href="#how-it-works" className="text-gray-400 hover:text-white transition-colors">
+                  How It Works
                 </a>
               </li>
               <li>
-                <a href="#how-it-works" className="text-gray-400 hover:text-white transition-colors">
-                  How It Works
+                <a href="#integrations" className="text-gray-400 hover:text-white transition-colors">
+                  Integrations
                 </a>
               </li>
               <li>
@@ -72,21 +72,9 @@ const Footer = () => {
                   Pricing
                 </a>
               </li>
-            </ul>
-          </div>
-
-          {/* Company Links */}
-          <div>
-            <h3 className="font-semibold mb-4 text-white text-sm">Company</h3>
-            <ul className="space-y-2 text-sm">
               <li>
                 <a href="#" className="text-gray-400 hover:text-white transition-colors">
                   About
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Blog
                 </a>
               </li>
               <li>
