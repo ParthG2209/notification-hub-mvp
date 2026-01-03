@@ -1,3 +1,5 @@
+# backend/supabase/config.toml
+
 # Supabase Configuration File
 
 project_id = "your-project-id"
@@ -66,8 +68,29 @@ client_id = "env(GITHUB_CLIENT_ID)"
 secret = "env(GITHUB_CLIENT_SECRET)"
 redirect_uri = "http://localhost:54321/auth/v1/callback"
 
-# REMOVED the [edge_functions] section that was causing the error
-# Edge functions are managed differently in newer CLI versions
+# Edge Function specific configurations
+# Webhook functions don't need JWT verification (called by external services)
+[functions.webhook-google-drive]
+verify_jwt = false
+
+[functions.webhook-hubspot]
+verify_jwt = false
+
+[functions.webhook-slack]
+verify_jwt = false
+
+# OAuth functions DO need JWT verification (called by authenticated users)
+[functions.oauth-google]
+verify_jwt = true
+
+[functions.oauth-hubspot]
+verify_jwt = true
+
+[functions.oauth-slack]
+verify_jwt = true
+
+[functions.token-refresh]
+verify_jwt = false  # This runs as a cron job
 
 [analytics]
 enabled = false
