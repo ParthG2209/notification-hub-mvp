@@ -1,12 +1,68 @@
+// backend/supabase/functions/oauth-google/index.ts
+
 // Google OAuth Handler (Gmail + Google Drive)
 import { handleCors, createResponse, createErrorResponse } from '../_shared/cors.ts';
-import { supabaseAdmin, getUserFromRequest } from '../_shared/supabase.ts';
+import { supabaseAdmin } from '../_shared/supabase.ts';
 import { validateOAuthCode, validateRequestBody } from '../_shared/validators.ts';
 import { encryptToken, maskToken } from '../_shared/encryption.ts';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
 const FRONTEND_URL = Deno.env.get('FRONTEND_URL') || 'http://localhost:3000';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
+
+// Manual JWT verification function
+async function verifyUserToken(req: Request): Promise<{ user: any | null; error: string | null }> {
+  try {
+    const authHeader = req.headers.get('Authorization');
+    
+    if (!authHeader) {
+      return { user: null, error: 'No authorization header' };
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    if (!token || token.length < 20) {
+      return { user: null, error: 'Invalid token format' };
+    }
+
+    // Create a client with the user's token to verify it
+    const supabase = createClient(
+      SUPABASE_URL!,
+      SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: authHeader,
+          },
+        },
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    // Verify the token by getting the user
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error) {
+      console.error('Token verification error:', error);
+      return { user: null, error: error.message };
+    }
+
+    if (!user) {
+      return { user: null, error: 'User not found' };
+    }
+
+    return { user, error: null };
+  } catch (error) {
+    console.error('Exception verifying token:', error);
+    return { user: null, error: (error as Error).message };
+  }
+}
 
 Deno.serve(async (req: Request) => {
   console.log('=== OAuth Google Function Called ===');
@@ -23,23 +79,18 @@ Deno.serve(async (req: Request) => {
 
   try {
     console.log('Processing OAuth request...');
-    console.log('Request headers:', {
-      authorization: req.headers.get('Authorization') ? 'present' : 'missing',
-      contentType: req.headers.get('Content-Type'),
-      apikey: req.headers.get('apikey') ? 'present' : 'missing'
-    });
 
-    // Get user from request
-    const { user, error: authError } = await getUserFromRequest(req);
+    // MANUAL TOKEN VERIFICATION
+    const { user, error: authError } = await verifyUserToken(req);
     
-    if (authError) {
-      console.error('Auth error:', authError);
-      return createErrorResponse(`Unauthorized: ${authError}`, 401, null, req);
-    }
-    
-    if (!user) {
-      console.error('No user found in request');
-      return createErrorResponse('Unauthorized: No user found', 401, null, req);
+    if (authError || !user) {
+      console.error('Auth verification failed:', authError);
+      return createErrorResponse(
+        `Unauthorized: ${authError || 'No user found'}`, 
+        401, 
+        { detail: 'JWT verification failed', authError }, 
+        req
+      );
     }
 
     console.log('User authenticated:', {
