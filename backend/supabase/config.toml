@@ -73,6 +73,9 @@ redirect_uri = "http://localhost:54321/auth/v1/callback"
 [functions.webhook-google-drive]
 verify_jwt = false
 
+[functions.webhook-gmail]
+verify_jwt = false
+
 [functions.webhook-hubspot]
 verify_jwt = false
 
@@ -87,6 +90,10 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.oauth-slack]
+verify_jwt = true
+
+# Sync functions need JWT verification (called by authenticated users)
+[functions.sync-gmail]
 verify_jwt = true
 
 [functions.token-refresh]
