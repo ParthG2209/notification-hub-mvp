@@ -44,6 +44,7 @@ const HeroSection = ({
     const animationFrameIdRef = useRef(null);
     const videoRef = useRef(null);
     const [showVideo, setShowVideo] = useState(false);
+    const [showArrow, setShowArrow] = useState(true);
 
     const resolvedCanvasColorsRef = useRef({
         strokeStyle: { r: 128, g: 128, b: 128 },
@@ -62,11 +63,7 @@ const HeroSection = ({
             if (parsedFgColor) {
                 resolvedCanvasColorsRef.current.strokeStyle = parsedFgColor;
             } else {
-                console.warn("HeroSection: Could not parse --foreground for canvas arrow. Using fallback.");
-                const isDarkMode = document.documentElement.classList.contains('dark');
-                resolvedCanvasColorsRef.current.strokeStyle = isDarkMode 
-                    ? { r: 250, g: 250, b: 250 } 
-                    : { r: 10, g: 10, b: 10 };
+                resolvedCanvasColorsRef.current.strokeStyle = { r: 250, g: 250, b: 250 };
             }
         };
 
@@ -93,8 +90,26 @@ const HeroSection = ({
         };
     }, []);
 
+    // Check scroll position to hide arrow
+    useEffect(() => {
+        const handleScroll = () => {
+            const scrollY = window.scrollY;
+            const windowHeight = window.innerHeight;
+            
+            // Hide arrow when scrolled past 80% of viewport height
+            if (scrollY > windowHeight * 0.8) {
+                setShowArrow(false);
+            } else {
+                setShowArrow(true);
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
     const drawArrow = useCallback(() => {
-        if (!canvasRef.current || !targetRef.current || !ctxRef.current) return;
+        if (!canvasRef.current || !targetRef.current || !ctxRef.current || !showArrow) return;
 
         const targetEl = targetRef.current;
         const ctx = ctxRef.current;
@@ -150,7 +165,7 @@ const HeroSection = ({
             y1 - headLength * Math.sin(angle + Math.PI / 6)
         );
         ctx.stroke();
-    }, []);
+    }, [showArrow]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -228,12 +243,12 @@ const HeroSection = ({
     };
 
     return (
-        <div className="bg-background text-foreground min-h-screen flex flex-col">
+        <div className="bg-black text-white min-h-screen flex flex-col">
             <nav className="w-full max-w-screen-md mx-auto flex flex-wrap justify-center sm:justify-between items-center px-4 sm:px-8 py-4 text-sm">
                 {navItems.map((item) => {
                     const commonProps = {
                         key: item.id,
-                        className: "py-2 px-3 sm:px-4 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/10 dark:hover:bg-accent/20 focus:outline-none focus:ring-2 focus:ring-ring transition-colors duration-150 ease-in-out whitespace-nowrap",
+                        className: "py-2 px-3 sm:px-4 rounded-md text-gray-400 hover:text-white hover:bg-white/5 transition-colors duration-150 ease-in-out whitespace-nowrap",
                         onClick: item.onClick,
                     };
 
@@ -263,7 +278,7 @@ const HeroSection = ({
                     <h1 className="text-3xl sm:text-4xl lg:text-5xl font-medium text-center px-4">
                         {heading}
                     </h1>
-                    <p className="mt-3 block text-muted-foreground text-center text-base sm:text-lg px-4 max-w-xl">
+                    <p className="mt-3 block text-gray-400 text-center text-base sm:text-lg px-4 max-w-xl">
                         {tagline}
                     </p>
                 </div>
@@ -272,15 +287,15 @@ const HeroSection = ({
                     <button
                         ref={targetRef}
                         onClick={handleButtonClick}
-                        className="py-2 px-4 rounded-xl border border-foreground/50 hover:border-foreground/80 text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+                        className="py-2 px-4 rounded-xl border border-white/20 hover:border-white/40 text-white transition-colors"
                     >
                         {buttonText}
                     </button>
                 </div>
 
                 <div className="mt-12 lg:mt-16 w-full max-w-screen-sm mx-auto overflow-hidden px-4 sm:px-2">
-                    <div className="bg-border rounded-[2rem] p-[0.25rem]">
-                        <div className="relative h-64 sm:h-72 md:h-80 lg:h-96 rounded-[1.75rem] bg-card flex items-center justify-center overflow-hidden">
+                    <div className="bg-white/10 rounded-[2rem] p-[0.25rem]">
+                        <div className="relative h-64 sm:h-72 md:h-80 lg:h-96 rounded-[1.75rem] bg-black flex items-center justify-center overflow-hidden">
                             {imageUrl && (
                                 <img
                                     src={imageUrl}
@@ -306,7 +321,7 @@ const HeroSection = ({
                             {!showVideo && videoUrl && imageUrl && (
                                 <button
                                     onClick={handlePlayButtonClick}
-                                    className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-20 p-2 sm:p-3 bg-accent/30 hover:bg-accent/50 text-accent-foreground backdrop-blur-sm rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+                                    className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-20 p-2 sm:p-3 bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm rounded-full transition-colors"
                                     aria-label="Play video"
                                 >
                                     <PlayIcon className="w-4 h-4 sm:w-5 sm:h-6" />
@@ -314,7 +329,7 @@ const HeroSection = ({
                             )}
 
                             {!imageUrl && !videoUrl && (
-                                <div className="text-muted-foreground italic">Card Content Area</div>
+                                <div className="text-gray-400 italic">Card Content Area</div>
                             )}
                         </div>
                     </div>
@@ -322,7 +337,11 @@ const HeroSection = ({
             </main>
 
             <div className="h-12 sm:h-16 md:h-24"></div>
-            <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-10"></canvas>
+            <canvas 
+                ref={canvasRef} 
+                className="fixed inset-0 pointer-events-none z-10 transition-opacity duration-500"
+                style={{ opacity: showArrow ? 1 : 0 }}
+            />
         </div>
     );
 };
