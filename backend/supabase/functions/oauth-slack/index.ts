@@ -4,9 +4,10 @@ import { supabaseAdmin, getUserFromRequest } from '../_shared/supabase.ts';
 import { validateOAuthCode, validateRequestBody } from '../_shared/validators.ts';
 import { encryptToken, maskToken } from '../_shared/encryption.ts';
 
-const SLACK_CLIENT_ID = Deno.env.get('SLACK_CLIENT_ID');
-const SLACK_CLIENT_SECRET = Deno.env.get('SLACK_CLIENT_SECRET');
-const FRONTEND_URL = Deno.env.get('FRONTEND_URL') || 'http://localhost:3000';
+// Fix: trim() env vars to prevent whitespace issues
+const SLACK_CLIENT_ID = Deno.env.get('SLACK_CLIENT_ID')?.trim();
+const SLACK_CLIENT_SECRET = Deno.env.get('SLACK_CLIENT_SECRET')?.trim();
+const FRONTEND_URL = Deno.env.get('FRONTEND_URL')?.trim() || 'http://localhost:3000';
 
 Deno.serve(async (req: Request) => {
   // Handle CORS
@@ -25,18 +26,25 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     
     // Validate request body
-    const bodyValidation = validateRequestBody(body, ['code']);
+    // Fix: Validated that redirect_uri is present in the body
+    const bodyValidation = validateRequestBody(body, ['code', 'redirect_uri']);
     if (!bodyValidation.valid) {
       return createErrorResponse(bodyValidation.error!, 400);
     }
 
-    const { code } = body;
+    const { code, redirect_uri } = body;
 
     // Validate authorization code
     const codeValidation = validateOAuthCode(code);
     if (!codeValidation.valid) {
       return createErrorResponse(codeValidation.error!, 400);
     }
+
+    console.log('Exchanging Slack token with:', {
+      redirect_uri, // Log this to verify it matches frontend
+      has_client_id: !!SLACK_CLIENT_ID,
+      has_client_secret: !!SLACK_CLIENT_SECRET
+    });
 
     // Exchange authorization code for tokens
     const tokenResponse = await fetch('https://slack.com/api/oauth.v2.access', {
@@ -48,7 +56,8 @@ Deno.serve(async (req: Request) => {
         code,
         client_id: SLACK_CLIENT_ID!,
         client_secret: SLACK_CLIENT_SECRET!,
-        redirect_uri: `${FRONTEND_URL}/auth/callback`,
+        // Fix: Use the redirect_uri provided by the frontend to avoid mismatch
+        redirect_uri: redirect_uri,
       }),
     });
 
