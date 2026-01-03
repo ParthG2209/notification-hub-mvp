@@ -147,6 +147,7 @@ Deno.serve(async (req: Request) => {
       integrationType: integration_type,
       clientIdPrefix: GOOGLE_CLIENT_ID?.substring(0, 20) + '...'
     });
+    
     // Exchange authorization code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -219,6 +220,46 @@ Deno.serve(async (req: Request) => {
       type: integration_type
     });
 
+    // Register webhook and fetch initial emails for Gmail
+    if (integration_type === 'gmail') {
+      try {
+        // Fetch user's email address
+        const profileResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
+          headers: {
+            'Authorization': `Bearer ${access_token}`,
+          },
+        });
+        
+        if (profileResponse.ok) {
+          const profile = await profileResponse.json();
+          
+          // Update integration metadata with email
+          await supabaseAdmin
+            .from('integrations')
+            .update({
+              metadata: {
+                ...integration.metadata,
+                email: profile.emailAddress,
+              },
+            })
+            .eq('id', integration.id);
+          
+          console.log('Gmail profile updated:', profile.emailAddress);
+        }
+
+        // Fetch initial emails
+        console.log('Fetching initial Gmail messages...');
+        await fetchInitialGmailMessages(access_token, integration.id, user.id);
+        console.log('Initial Gmail messages fetched');
+
+        // Note: Gmail push notifications require Google Cloud Pub/Sub setup
+        // For now, users can use the manual sync button
+      } catch (gmailError) {
+        console.error('Failed to set up Gmail:', gmailError);
+        // Don't fail the entire request if initial fetch fails
+      }
+    }
+
     // Register webhook for Google Drive (if applicable)
     if (integration_type === 'google-drive') {
       try {
@@ -274,4 +315,121 @@ async function registerDriveWebhook(accessToken: string, userId: string): Promis
   }
 
   return await response.json();
+}
+
+// Fetch initial Gmail messages
+async function fetchInitialGmailMessages(accessToken: string, integrationId: string, userId: string): Promise<void> {
+  try {
+    // Fetch recent messages (last 10)
+    const response = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=INBOX`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Gmail API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const messages = data.messages || [];
+
+    console.log(`Fetched ${messages.length} initial messages`);
+
+    // Fetch details for each message and create notifications
+    for (const message of messages) {
+      await createGmailNotification(accessToken, integrationId, userId, message.id);
+    }
+  } catch (error) {
+    console.error('Failed to fetch initial Gmail messages:', error);
+    throw error;
+  }
+}
+
+// Create notification from Gmail message
+async function createGmailNotification(
+  accessToken: string,
+  integrationId: string,
+  userId: string,
+  messageId: string
+): Promise<void> {
+  try {
+    // Check if notification already exists
+    const { data: existing } = await supabaseAdmin
+      .from('notifications')
+      .select('id')
+      .eq('source_id', messageId)
+      .eq('user_id', userId)
+      .single();
+
+    if (existing) {
+      console.log('Notification already exists for message:', messageId);
+      return;
+    }
+
+    // Fetch message details
+    const response = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error(`Failed to fetch message ${messageId}:`, response.status);
+      return;
+    }
+
+    const messageData = await response.json();
+
+    // Extract email details
+    const headers = messageData.payload.headers;
+    const subject = headers.find((h: any) => h.name === 'Subject')?.value || '(No Subject)';
+    const from = headers.find((h: any) => h.name === 'From')?.value || 'Unknown';
+    const date = headers.find((h: any) => h.name === 'Date')?.value;
+
+    // Parse email address from "Name <email@example.com>" format
+    const fromEmail = from.match(/<(.+?)>/)?.[1] || from;
+    const fromName = from.replace(/<.+?>/, '').trim() || fromEmail;
+
+    // Get snippet (preview text)
+    const snippet = messageData.snippet || '';
+
+    // Create notification
+    const { error } = await supabaseAdmin
+      .from('notifications')
+      .insert({
+        user_id: userId,
+        integration_id: integrationId,
+        title: subject,
+        body: `From: ${fromName}\n\n${snippet}`,
+        source: 'gmail',
+        source_id: messageId,
+        read: false,
+        metadata: {
+          message_id: messageId,
+          subject,
+          from: fromEmail,
+          from_name: fromName,
+          date,
+          thread_id: messageData.threadId,
+          labels: messageData.labelIds,
+          internal_date: messageData.internalDate,
+        },
+        created_at: new Date(parseInt(messageData.internalDate)).toISOString(),
+      });
+
+    if (error) {
+      console.error('Failed to create notification:', error);
+    } else {
+      console.log('Created notification for message:', messageId, 'Subject:', subject);
+    }
+  } catch (error) {
+    console.error('Failed to process message:', error);
+  }
 }
