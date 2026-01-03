@@ -9,6 +9,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { IntegrationProvider } from './contexts/IntegrationContext';
 import { ToastProvider } from './components/common/Toast';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import Diagnostics from './pages/Diagnostics';
 
 function App() {
   // Initialize theme on app load
@@ -39,6 +40,7 @@ function App() {
                 {/* Public routes */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/auth/callback" element={<OAuthCallback />} />
+                <Route path="/diagnostics" element={<Diagnostics />} />
                 
                 {/* Protected routes */}
                 <Route
