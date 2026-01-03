@@ -193,10 +193,10 @@ export function AuthPage() {
         <div className="z-10 mt-auto">
           <blockquote className="space-y-2">
             <p className="text-xl text-white">
-              "The best notification management platform I've ever used."
+
             </p>
             <footer className="font-mono text-sm font-semibold text-gray-400">
-              - Happy User
+              
             </footer>
           </blockquote>
         </div>
