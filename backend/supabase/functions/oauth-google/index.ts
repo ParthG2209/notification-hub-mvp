@@ -14,19 +14,49 @@ Deno.serve(async (req: Request) => {
   if (corsResponse) return corsResponse;
 
   try {
+    console.log('=== OAuth Google Function Called ===');
+    console.log('Request headers:', {
+      authorization: req.headers.get('Authorization') ? 'present' : 'missing',
+      contentType: req.headers.get('Content-Type'),
+      apikey: req.headers.get('apikey') ? 'present' : 'missing'
+    });
+
     // Get user from request
     const { user, error: authError } = await getUserFromRequest(req);
     
-    if (authError || !user) {
-      return createErrorResponse('Unauthorized', 401);
+    if (authError) {
+      console.error('Auth error:', authError);
+      return createErrorResponse(`Unauthorized: ${authError}`, 401);
+    }
+    
+    if (!user) {
+      console.error('No user found in request');
+      return createErrorResponse('Unauthorized: No user found', 401);
     }
 
+    console.log('User authenticated:', {
+      userId: user.id,
+      email: user.email
+    });
+
     // Parse request body
-    const body = await req.json();
+    let body;
+    try {
+      body = await req.json();
+      console.log('Request body parsed:', {
+        hasCode: !!body.code,
+        integrationType: body.integration_type,
+        hasRedirectUri: !!body.redirect_uri
+      });
+    } catch (e) {
+      console.error('Failed to parse request body:', e);
+      return createErrorResponse('Invalid JSON in request body', 400);
+    }
     
     // Validate request body
     const bodyValidation = validateRequestBody(body, ['code', 'integration_type']);
     if (!bodyValidation.valid) {
+      console.error('Body validation failed:', bodyValidation.error);
       return createErrorResponse(bodyValidation.error!, 400);
     }
 
@@ -35,6 +65,7 @@ Deno.serve(async (req: Request) => {
     // Validate authorization code
     const codeValidation = validateOAuthCode(code);
     if (!codeValidation.valid) {
+      console.error('Code validation failed:', codeValidation.error);
       return createErrorResponse(codeValidation.error!, 400);
     }
 
@@ -46,7 +77,11 @@ Deno.serve(async (req: Request) => {
     // Use the redirect_uri from the request, fallback to FRONTEND_URL
     const actualRedirectUri = redirect_uri || `${FRONTEND_URL}/auth/callback`;
 
-    console.log('Using redirect URI:', actualRedirectUri);
+    console.log('OAuth exchange parameters:', {
+      integrationType: integration_type,
+      redirectUri: actualRedirectUri,
+      userId: user.id
+    });
 
     // Exchange authorization code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -65,11 +100,20 @@ Deno.serve(async (req: Request) => {
 
     if (!tokenResponse.ok) {
       const error = await tokenResponse.json();
-      console.error('Google token exchange failed:', error);
+      console.error('Google token exchange failed:', {
+        status: tokenResponse.status,
+        error
+      });
       return createErrorResponse('Failed to exchange authorization code', 400, error);
     }
 
     const tokenData = await tokenResponse.json();
+    console.log('Token exchange successful:', {
+      hasAccessToken: !!tokenData.access_token,
+      hasRefreshToken: !!tokenData.refresh_token,
+      expiresIn: tokenData.expires_in
+    });
+
     const { access_token, refresh_token, expires_in } = tokenData;
 
     // Calculate token expiration time
@@ -80,6 +124,7 @@ Deno.serve(async (req: Request) => {
     const encryptedRefreshToken = refresh_token ? encryptToken(refresh_token) : null;
 
     // Store integration in database
+    console.log('Storing integration in database...');
     const { data: integration, error: dbError } = await supabaseAdmin
       .from('integrations')
       .upsert({
@@ -105,17 +150,23 @@ Deno.serve(async (req: Request) => {
       return createErrorResponse('Failed to store integration', 500, dbError.message);
     }
 
+    console.log('Integration stored successfully:', {
+      integrationId: integration.id,
+      type: integration_type
+    });
+
     // Register webhook for Google Drive (if applicable)
     if (integration_type === 'google-drive') {
       try {
         await registerDriveWebhook(access_token, user.id);
+        console.log('Drive webhook registered');
       } catch (webhookError) {
         console.error('Failed to register Drive webhook:', webhookError);
         // Don't fail the entire request if webhook registration fails
       }
     }
 
-    console.log(`Google ${integration_type} connected for user ${maskToken(user.id)}`);
+    console.log(`Google ${integration_type} connected successfully for user ${maskToken(user.id)}`);
 
     return createResponse({
       success: true,
