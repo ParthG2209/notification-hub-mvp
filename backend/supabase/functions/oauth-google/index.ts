@@ -9,12 +9,20 @@ const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
 const FRONTEND_URL = Deno.env.get('FRONTEND_URL') || 'http://localhost:3000';
 
 Deno.serve(async (req: Request) => {
+  console.log('=== OAuth Google Function Called ===');
+  console.log('Request method:', req.method);
+  console.log('Request URL:', req.url);
+  console.log('Request origin:', req.headers.get('origin'));
+  
   // Handle CORS
   const corsResponse = handleCors(req);
-  if (corsResponse) return corsResponse;
+  if (corsResponse) {
+    console.log('Returning CORS preflight response');
+    return corsResponse;
+  }
 
   try {
-    console.log('=== OAuth Google Function Called ===');
+    console.log('Processing OAuth request...');
     console.log('Request headers:', {
       authorization: req.headers.get('Authorization') ? 'present' : 'missing',
       contentType: req.headers.get('Content-Type'),
@@ -26,12 +34,12 @@ Deno.serve(async (req: Request) => {
     
     if (authError) {
       console.error('Auth error:', authError);
-      return createErrorResponse(`Unauthorized: ${authError}`, 401);
+      return createErrorResponse(`Unauthorized: ${authError}`, 401, null, req);
     }
     
     if (!user) {
       console.error('No user found in request');
-      return createErrorResponse('Unauthorized: No user found', 401);
+      return createErrorResponse('Unauthorized: No user found', 401, null, req);
     }
 
     console.log('User authenticated:', {
@@ -50,14 +58,14 @@ Deno.serve(async (req: Request) => {
       });
     } catch (e) {
       console.error('Failed to parse request body:', e);
-      return createErrorResponse('Invalid JSON in request body', 400);
+      return createErrorResponse('Invalid JSON in request body', 400, null, req);
     }
     
     // Validate request body
     const bodyValidation = validateRequestBody(body, ['code', 'integration_type']);
     if (!bodyValidation.valid) {
       console.error('Body validation failed:', bodyValidation.error);
-      return createErrorResponse(bodyValidation.error!, 400);
+      return createErrorResponse(bodyValidation.error!, 400, null, req);
     }
 
     const { code, integration_type, redirect_uri } = body;
@@ -66,12 +74,12 @@ Deno.serve(async (req: Request) => {
     const codeValidation = validateOAuthCode(code);
     if (!codeValidation.valid) {
       console.error('Code validation failed:', codeValidation.error);
-      return createErrorResponse(codeValidation.error!, 400);
+      return createErrorResponse(codeValidation.error!, 400, null, req);
     }
 
     // Validate integration type (gmail or google-drive)
     if (!['gmail', 'google-drive'].includes(integration_type)) {
-      return createErrorResponse('Invalid integration type for Google OAuth', 400);
+      return createErrorResponse('Invalid integration type for Google OAuth', 400, null, req);
     }
 
     // Use the redirect_uri from the request, fallback to FRONTEND_URL
@@ -104,7 +112,7 @@ Deno.serve(async (req: Request) => {
         status: tokenResponse.status,
         error
       });
-      return createErrorResponse('Failed to exchange authorization code', 400, error);
+      return createErrorResponse('Failed to exchange authorization code', 400, error, req);
     }
 
     const tokenData = await tokenResponse.json();
@@ -147,7 +155,7 @@ Deno.serve(async (req: Request) => {
 
     if (dbError) {
       console.error('Database error:', dbError);
-      return createErrorResponse('Failed to store integration', 500, dbError.message);
+      return createErrorResponse('Failed to store integration', 500, dbError.message, req);
     }
 
     console.log('Integration stored successfully:', {
@@ -177,11 +185,11 @@ Deno.serve(async (req: Request) => {
         status: integration.status,
         created_at: integration.created_at,
       },
-    });
+    }, 200, req);
 
   } catch (error) {
     console.error('OAuth error:', error);
-    return createErrorResponse('Internal server error', 500, (error as Error).message);
+    return createErrorResponse('Internal server error', 500, (error as Error).message, req);
   }
 });
 
