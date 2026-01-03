@@ -1,6 +1,6 @@
 // frontend/src/pages/0AuthCallback.jsx
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../services/supabase/client';
 import { handleOAuthCallback } from '../services/oauth/oauthHandler';
@@ -15,8 +15,19 @@ export default function OAuthCallback() {
   const toast = useToast();
   const { refetch } = useIntegrations();
   const [status, setStatus] = useState('processing');
+  
+  // Use ref to prevent double execution
+  const hasRun = useRef(false);
 
   useEffect(() => {
+    // Prevent double execution
+    if (hasRun.current) {
+      console.log('OAuth callback already processed, skipping...');
+      return;
+    }
+    
+    hasRun.current = true;
+
     const handleCallback = async () => {
       try {
         // Get URL parameters
@@ -24,6 +35,13 @@ export default function OAuthCallback() {
         const errorDescription = searchParams.get('error_description');
         const code = searchParams.get('code');
         const state = searchParams.get('state');
+        
+        console.log('OAuth callback parameters:', {
+          hasError: !!error,
+          hasCode: !!code,
+          hasState: !!state,
+          codeLength: code?.length
+        });
         
         // Handle OAuth errors
         if (error) {
@@ -60,19 +78,22 @@ export default function OAuthCallback() {
 
         // Case 2: Integration OAuth (Gmail, Slack, HubSpot, Google Drive)
         if (code && state && storedIntegration) {
-          console.log('Handling Integration OAuth callback for:', storedIntegration);
+          console.log('=== Integration OAuth Callback ===');
+          console.log('Integration type:', storedIntegration);
+          console.log('Authorization code length:', code.length);
+          
           setStatus('processing');
           
           // Wait for session to be fully established
           console.log('Waiting for session to stabilize...');
-          await new Promise(resolve => setTimeout(resolve, 2500));
+          await new Promise(resolve => setTimeout(resolve, 2000));
           
-          // Get session
+          // Get session with retry logic
           let session = null;
-          let retries = 5;
+          let retries = 3;
           
           while (retries > 0 && !session) {
-            console.log(`Attempting to get session (${6 - retries}/5)...`);
+            console.log(`Attempting to get session (${4 - retries}/3)...`);
             
             const { data, error: sessionError } = await supabase.auth.getSession();
             
@@ -84,17 +105,6 @@ export default function OAuthCallback() {
                 session = data.session;
                 console.log('Valid session found');
                 break;
-              } else {
-                console.warn('Session expired, refreshing...');
-                const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-                
-                if (refreshError) {
-                  console.error('Refresh error:', refreshError);
-                } else if (refreshData?.session) {
-                  session = refreshData.session;
-                  console.log('Session refreshed successfully');
-                  break;
-                }
               }
             }
             
@@ -104,14 +114,12 @@ export default function OAuthCallback() {
             
             retries--;
             if (retries > 0) {
-              const waitTime = (6 - retries) * 1000;
-              console.log(`Waiting ${waitTime}ms before retry...`);
-              await new Promise(resolve => setTimeout(resolve, waitTime));
+              await new Promise(resolve => setTimeout(resolve, 1000));
             }
           }
           
           if (!session) {
-            console.error('No valid session after all retries');
+            console.error('No valid session after retries');
             throw new Error('Authentication session not found. Please log out, log back in, and try connecting the integration again.');
           }
 
@@ -120,22 +128,38 @@ export default function OAuthCallback() {
             throw new Error('Invalid authentication token. Please log out, log back in, and try again.');
           }
 
-          console.log('Valid session confirmed, proceeding with OAuth callback');
+          console.log('Session validated, exchanging code for tokens...');
 
+          // Exchange code for tokens - THIS ONLY HAPPENS ONCE
           const result = await handleOAuthCallback(code, state, supabase);
+          
+          console.log('OAuth exchange successful:', result);
           
           // Clear stored integration type
           sessionStorage.removeItem('oauth_integration');
+          sessionStorage.removeItem('oauth_redirect_uri');
           
           setStatus('success');
           toast.success(result.message || 'Integration connected successfully!');
           
-          // IMPORTANT: Refetch integrations after successful connection
-          console.log('Refetching integrations...');
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Small delay to ensure DB has updated
-          await refetch();
+          // Wait a bit then refetch integrations
+          console.log('Waiting before refetch...');
+          await new Promise(resolve => setTimeout(resolve, 1500));
           
-          setTimeout(() => navigate('/integrations', { replace: true }), 1500);
+          console.log('Refetching integrations...');
+          try {
+            await refetch();
+            console.log('Integrations refetched successfully');
+          } catch (refetchError) {
+            console.error('Error refetching integrations:', refetchError);
+            // Don't fail the whole flow if refetch fails
+          }
+          
+          setTimeout(() => {
+            console.log('Redirecting to integrations page...');
+            navigate('/integrations', { replace: true });
+          }, 500);
+          
         } else if (!storedIntegration && code) {
           // Edge case: we have a code but no stored integration
           console.log('Edge case: code without stored integration');
@@ -154,7 +178,10 @@ export default function OAuthCallback() {
           throw new Error('Invalid OAuth callback parameters');
         }
       } catch (error) {
-        console.error('OAuth callback error:', error);
+        console.error('=== OAuth Callback Error ===');
+        console.error('Error:', error);
+        console.error('Stack:', error.stack);
+        
         setStatus('error');
         
         let errorMessage = error.message || 'Authentication failed';
@@ -163,6 +190,7 @@ export default function OAuthCallback() {
         
         // Clear stored integration type on error
         sessionStorage.removeItem('oauth_integration');
+        sessionStorage.removeItem('oauth_redirect_uri');
         
         // Redirect based on context
         const storedIntegration = sessionStorage.getItem('oauth_integration');
@@ -172,7 +200,7 @@ export default function OAuthCallback() {
     };
 
     handleCallback();
-  }, [navigate, searchParams, toast, refetch]);
+  }, []); // CRITICAL: Empty dependency array to run only once
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-agency-gradient text-white">
