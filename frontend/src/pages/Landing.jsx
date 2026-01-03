@@ -3,7 +3,6 @@ import { HeroSection } from '../components/ui/dynamic-hero';
 import Features from '../components/landing/Features';
 import HowItWorks from '../components/landing/HowItWorks';
 import IntegrationsSection from '../components/landing/IntegrationsSection';
-import CTA from '../components/landing/CTA';
 import Footer from '../components/landing/Footer';
 
 const Landing = () => {
@@ -36,7 +35,7 @@ const Landing = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-agency-gradient text-white">
+    <div className="min-h-screen bg-black text-white">
       <HeroSection
         heading="All Your Notifications, One Dashboard"
         tagline="Stop switching between apps. Notification Hub brings Gmail, Slack, Google Drive, and HubSpot notifications together in one beautiful, unified interface."
@@ -49,7 +48,6 @@ const Landing = () => {
       <Features />
       <HowItWorks />
       <IntegrationsSection />
-      <CTA onGetStarted={handleGetStarted} />
       <Footer />
     </div>
   );
