@@ -65,21 +65,3 @@
   background-image: radial-gradient(50.6% 100% at 50% 0%, #00041f, #00020f 73.8%);
   min-height: 100vh;
 }
-/* Custom Scrollbar for dark theme */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #0c0c0f; 
-}
-
-::-webkit-scrollbar-thumb {
-  background: #333; 
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #444; 
-}
