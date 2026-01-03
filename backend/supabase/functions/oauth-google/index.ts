@@ -17,13 +17,13 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 async function verifyUserToken(req: Request): Promise<{ user: any | null; error: string | null }> {
   try {
     const authHeader = req.headers.get('Authorization');
-    
+
     if (!authHeader) {
       return { user: null, error: 'No authorization header' };
     }
 
     const token = authHeader.replace('Bearer ', '');
-    
+
     if (!token || token.length < 20) {
       return { user: null, error: 'Invalid token format' };
     }
@@ -47,7 +47,7 @@ async function verifyUserToken(req: Request): Promise<{ user: any | null; error:
 
     // Verify the token by getting the user
     const { data: { user }, error } = await supabase.auth.getUser();
-    
+
     if (error) {
       console.error('Token verification error:', error);
       return { user: null, error: error.message };
@@ -69,7 +69,7 @@ Deno.serve(async (req: Request) => {
   console.log('Request method:', req.method);
   console.log('Request URL:', req.url);
   console.log('Request origin:', req.headers.get('origin'));
-  
+
   // Handle CORS
   const corsResponse = handleCors(req);
   if (corsResponse) {
@@ -82,13 +82,13 @@ Deno.serve(async (req: Request) => {
 
     // MANUAL TOKEN VERIFICATION
     const { user, error: authError } = await verifyUserToken(req);
-    
+
     if (authError || !user) {
       console.error('Auth verification failed:', authError);
       return createErrorResponse(
-        `Unauthorized: ${authError || 'No user found'}`, 
-        401, 
-        { detail: 'JWT verification failed', authError }, 
+        `Unauthorized: ${authError || 'No user found'}`,
+        401,
+        { detail: 'JWT verification failed', authError },
         req
       );
     }
@@ -111,7 +111,7 @@ Deno.serve(async (req: Request) => {
       console.error('Failed to parse request body:', e);
       return createErrorResponse('Invalid JSON in request body', 400, null, req);
     }
-    
+
     // Validate request body
     const bodyValidation = validateRequestBody(body, ['code', 'integration_type']);
     if (!bodyValidation.valid) {
@@ -141,7 +141,12 @@ Deno.serve(async (req: Request) => {
       redirectUri: actualRedirectUri,
       userId: user.id
     });
-
+    console.log('About to exchange code with Google:', {
+      codeLength: code?.length,
+      redirectUri: actualRedirectUri,
+      integrationType: integration_type,
+      clientIdPrefix: GOOGLE_CLIENT_ID?.substring(0, 20) + '...'
+    });
     // Exchange authorization code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
