@@ -1,39 +1,44 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Mail, MessageSquare, FolderOpen, Target } from 'lucide-react';
 
 const IntegrationsSection = () => {
   const integrations = [
     {
       name: 'Gmail',
-      icon: '📧',
+      icon: <Mail className="h-10 w-10" />,
       description: 'Never miss an important email',
       stats: '2.5B+ users',
       bgColor: 'bg-red-500/10',
-      borderColor: 'border-red-500/20'
+      borderColor: 'border-red-500/20',
+      iconColor: 'text-red-400'
     },
     {
       name: 'Slack',
-      icon: '💬',
+      icon: <MessageSquare className="h-10 w-10" />,
       description: 'Stay on top of team messages',
       stats: '18M+ users',
       bgColor: 'bg-purple-500/10',
-      borderColor: 'border-purple-500/20'
+      borderColor: 'border-purple-500/20',
+      iconColor: 'text-purple-400'
     },
     {
       name: 'Google Drive',
-      icon: '📁',
+      icon: <FolderOpen className="h-10 w-10" />,
       description: 'Track file updates and shares',
       stats: '1B+ users',
       bgColor: 'bg-blue-500/10',
-      borderColor: 'border-blue-500/20'
+      borderColor: 'border-blue-500/20',
+      iconColor: 'text-blue-400'
     },
     {
       name: 'HubSpot',
-      icon: '🎯',
+      icon: <Target className="h-10 w-10" />,
       description: 'Monitor CRM activities',
       stats: '184K+ customers',
       bgColor: 'bg-orange-500/10',
-      borderColor: 'border-orange-500/20'
+      borderColor: 'border-orange-500/20',
+      iconColor: 'text-orange-400'
     }
   ];
 
@@ -55,7 +60,7 @@ const IntegrationsSection = () => {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {integrations.map((integration, index) => (
             <motion.div
               key={index}
@@ -68,7 +73,9 @@ const IntegrationsSection = () => {
             >
               <div className={`border ${integration.borderColor} ${integration.bgColor} rounded-lg p-6 transition-all h-full flex flex-col`}>
                 {/* Icon */}
-                <div className="text-5xl mb-4">{integration.icon}</div>
+                <div className={`${integration.iconColor} mb-4`}>
+                  {integration.icon}
+                </div>
                 
                 {/* Content */}
                 <h3 className="text-xl font-semibold mb-2 text-white">{integration.name}</h3>
@@ -80,30 +87,6 @@ const IntegrationsSection = () => {
             </motion.div>
           ))}
         </div>
-
-        {/* Coming Soon */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="border border-white/10 rounded-lg p-8 text-center bg-zinc-900"
-        >
-          <h3 className="text-xl font-semibold mb-3 text-white">More integrations coming soon</h3>
-          <p className="text-gray-400 mb-6 text-sm">
-            Microsoft Teams, Trello, Asana, and many more.
-          </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            {['Teams', 'Trello', 'Asana', 'Notion', 'Discord'].map((app, idx) => (
-              <span
-                key={idx}
-                className="px-4 py-2 border border-white/10 rounded-md text-sm text-gray-400 bg-black"
-              >
-                {app}
-              </span>
-            ))}
-          </div>
-        </motion.div>
       </div>
     </section>
   );
