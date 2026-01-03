@@ -22,18 +22,101 @@ export const AuthProvider = ({ children }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      if (session) {
+        console.log('Initial session loaded for user:', session.user.email);
+      }
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('Auth state changed:', _event, session?.user?.email);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email);
+      
+      // Handle token refresh
+      if (event === 'TOKEN_REFRESHED') {
+        console.log('Token refreshed successfully');
+      }
+      
+      // Handle signed out
+      if (event === 'SIGNED_OUT') {
+        console.log('User signed out');
+      }
+      
+      // Handle signed in
+      if (event === 'SIGNED_IN') {
+        console.log('User signed in');
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // Set up periodic session refresh to prevent JWT expiration
+    const refreshInterval = setInterval(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        // Check if token is about to expire (within 5 minutes)
+        const expiresAt = session.expires_at;
+        const now = Math.floor(Date.now() / 1000);
+        const timeUntilExpiry = expiresAt - now;
+        
+        if (timeUntilExpiry < 300) { // Less than 5 minutes
+          console.log('Token expiring soon, refreshing...');
+          const { data, error } = await supabase.auth.refreshSession();
+          
+          if (error) {
+            console.error('Failed to refresh session:', error);
+          } else if (data.session) {
+            console.log('Session refreshed proactively');
+            setSession(data.session);
+            setUser(data.session.user);
+          }
+        }
+      }
+    }, 60000); // Check every minute
+
+    return () => {
+      subscription.unsubscribe();
+      clearInterval(refreshInterval);
+    };
   }, []);
+
+  // Helper to ensure fresh session
+  const ensureFreshSession = async () => {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      console.error('Error getting session:', error);
+      return null;
+    }
+    
+    if (!session) {
+      console.error('No active session found');
+      return null;
+    }
+    
+    // Check if token needs refresh
+    const expiresAt = session.expires_at;
+    const now = Math.floor(Date.now() / 1000);
+    const timeUntilExpiry = expiresAt - now;
+    
+    if (timeUntilExpiry < 60) { // Less than 1 minute
+      console.log('Token expired or expiring, refreshing...');
+      const { data, error: refreshError } = await supabase.auth.refreshSession();
+      
+      if (refreshError) {
+        console.error('Failed to refresh session:', refreshError);
+        return null;
+      }
+      
+      console.log('Session refreshed');
+      return data.session;
+    }
+    
+    return session;
+  };
 
   // OAuth Sign In
   const signInWithGoogle = async () => {
@@ -118,8 +201,24 @@ export const AuthProvider = ({ children }) => {
 
   // Sign Out
   const signOut = async () => {
+    // Clear any stored OAuth state
+    sessionStorage.removeItem('oauth_integration');
+    
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+  };
+
+  // Refresh session manually
+  const refreshSession = async () => {
+    const { data, error } = await supabase.auth.refreshSession();
+    if (error) throw error;
+    
+    if (data.session) {
+      setSession(data.session);
+      setUser(data.session.user);
+    }
+    
+    return data;
   };
 
   const value = {
@@ -133,7 +232,9 @@ export const AuthProvider = ({ children }) => {
     signInWithEmail,
     resetPassword,
     updatePassword,
-    signOut
+    signOut,
+    refreshSession,
+    ensureFreshSession, // Export this for use in OAuth flows
   };
 
   return (
