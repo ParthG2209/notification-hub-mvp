@@ -5,9 +5,9 @@ const Footer = () => {
   return (
     <footer className="border-t border-white/10 bg-black">
       <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Brand */}
-          <div className="col-span-1 md:col-span-2">
+          <div>
             <div className="flex items-center gap-2 mb-4">
               <div className="bg-white p-2 rounded-lg">
                 <Grid className="h-5 w-5 text-black" />
@@ -48,46 +48,32 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Product Links */}
+          {/* Product Links - Single Row */}
           <div>
             <h3 className="font-semibold mb-4 text-white text-sm">Product</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <a href="#features" className="text-gray-400 hover:text-white transition-colors">
-                  Features
-                </a>
-              </li>
-              <li>
-                <a href="#how-it-works" className="text-gray-400 hover:text-white transition-colors">
-                  How It Works
-                </a>
-              </li>
-              <li>
-                <a href="#integrations" className="text-gray-400 hover:text-white transition-colors">
-                  Integrations
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Pricing
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  About
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Privacy
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Terms
-                </a>
-              </li>
-            </ul>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              <a href="#features" className="text-gray-400 hover:text-white transition-colors whitespace-nowrap">
+                Features
+              </a>
+              <a href="#how-it-works" className="text-gray-400 hover:text-white transition-colors whitespace-nowrap">
+                How It Works
+              </a>
+              <a href="#integrations" className="text-gray-400 hover:text-white transition-colors whitespace-nowrap">
+                Integrations
+              </a>
+              <a href="#" className="text-gray-400 hover:text-white transition-colors whitespace-nowrap">
+                Pricing
+              </a>
+              <a href="#" className="text-gray-400 hover:text-white transition-colors whitespace-nowrap">
+                About
+              </a>
+              <a href="#" className="text-gray-400 hover:text-white transition-colors whitespace-nowrap">
+                Privacy
+              </a>
+              <a href="#" className="text-gray-400 hover:text-white transition-colors whitespace-nowrap">
+                Terms
+              </a>
+            </div>
           </div>
         </div>
 
