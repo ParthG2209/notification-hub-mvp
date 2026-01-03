@@ -30,12 +30,11 @@ export default function OAuthCallback() {
         const storedIntegration = sessionStorage.getItem('oauth_integration');
         
         // Case 1: Supabase Social Auth (Google/GitHub login for app authentication)
-        // This happens when there's NO stored integration and we have a hash fragment
         if (!storedIntegration && (window.location.hash || !code)) {
           console.log('Handling Supabase Auth callback');
           
-          // Wait a bit for Supabase to process the auth
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Wait for Supabase to process the auth
+          await new Promise(resolve => setTimeout(resolve, 2000));
           
           const { data: { session }, error: sessionError } = await supabase.auth.getSession();
           
@@ -50,18 +49,7 @@ export default function OAuthCallback() {
             toast.success('Signed in successfully!');
             setTimeout(() => navigate('/dashboard', { replace: true }), 1500);
           } else {
-            // Try one more time after a longer delay
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            const { data: { session: retrySession } } = await supabase.auth.getSession();
-            
-            if (retrySession) {
-              console.log('Session found on retry, redirecting to dashboard');
-              setStatus('success');
-              toast.success('Signed in successfully!');
-              setTimeout(() => navigate('/dashboard', { replace: true }), 1500);
-            } else {
-              throw new Error('No session found after authentication');
-            }
+            throw new Error('No session found after authentication');
           }
           return;
         }
@@ -71,16 +59,44 @@ export default function OAuthCallback() {
           console.log('Handling Integration OAuth callback for:', storedIntegration);
           setStatus('processing');
           
-          // Make sure user is authenticated - with retry logic
+          // IMPORTANT: Wait longer for session to be fully established
+          console.log('Waiting for session to stabilize...');
+          await new Promise(resolve => setTimeout(resolve, 2500));
+          
+          // Try to get session with multiple retries and longer waits
           let session = null;
-          let retries = 3;
+          let retries = 5; // Increased from 3
           
           while (retries > 0 && !session) {
+            console.log(`Attempting to get session (${6 - retries}/5)...`);
+            
             const { data, error: sessionError } = await supabase.auth.getSession();
             
             if (data?.session) {
-              session = data.session;
-              break;
+              // Verify the session is actually valid
+              const expiresAt = data.session.expires_at;
+              const now = Math.floor(Date.now() / 1000);
+              
+              if (expiresAt && expiresAt > now) {
+                session = data.session;
+                console.log('Valid session found:', {
+                  hasAccessToken: !!session.access_token,
+                  tokenLength: session.access_token?.length,
+                  expiresIn: expiresAt - now
+                });
+                break;
+              } else {
+                console.warn('Session expired, refreshing...');
+                const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+                
+                if (refreshError) {
+                  console.error('Refresh error:', refreshError);
+                } else if (refreshData?.session) {
+                  session = refreshData.session;
+                  console.log('Session refreshed successfully');
+                  break;
+                }
+              }
             }
             
             if (sessionError) {
@@ -89,16 +105,28 @@ export default function OAuthCallback() {
             
             retries--;
             if (retries > 0) {
-              await new Promise(resolve => setTimeout(resolve, 1000));
+              // Exponential backoff
+              const waitTime = (6 - retries) * 1000;
+              console.log(`Waiting ${waitTime}ms before retry...`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
             }
           }
           
           if (!session) {
-            console.error('No valid session after retries');
-            throw new Error('Authentication session expired. Please log in again and try connecting the integration.');
+            console.error('No valid session after all retries');
+            throw new Error('Authentication session not found. Please log out, log back in, and try connecting the integration again.');
           }
 
-          console.log('Valid session found, proceeding with OAuth callback');
+          // Double-check we have a valid access token
+          if (!session.access_token || session.access_token.length < 20) {
+            console.error('Invalid access token:', {
+              hasToken: !!session.access_token,
+              length: session.access_token?.length
+            });
+            throw new Error('Invalid authentication token. Please log out, log back in, and try again.');
+          }
+
+          console.log('Valid session confirmed, proceeding with OAuth callback');
 
           const result = await handleOAuthCallback(code, state, supabase);
           
@@ -111,10 +139,9 @@ export default function OAuthCallback() {
           setTimeout(() => navigate('/integrations', { replace: true }), 1500);
         } else if (!storedIntegration && code) {
           // Edge case: we have a code but no stored integration
-          // This might be a Supabase auth callback with code instead of hash
           console.log('Edge case: code without stored integration');
           
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          await new Promise(resolve => setTimeout(resolve, 2000));
           const { data: { session } } = await supabase.auth.getSession();
           
           if (session) {
@@ -133,10 +160,6 @@ export default function OAuthCallback() {
         
         // Provide more specific error messages
         let errorMessage = error.message || 'Authentication failed';
-        
-        if (errorMessage.includes('JWT') || errorMessage.includes('session')) {
-          errorMessage = 'Your session has expired. Please log in again and try connecting the integration.';
-        }
         
         toast.error(errorMessage);
         
@@ -169,6 +192,7 @@ export default function OAuthCallback() {
             </motion.div>
             <h2 className="text-2xl font-bold mb-2">Completing authentication...</h2>
             <p className="text-gray-400">Please wait while we set up your connection</p>
+            <p className="text-xs text-gray-500 mt-4">This may take a few moments</p>
           </>
         )}
 
