@@ -1,3 +1,5 @@
+// frontend/src/services/oauth/oauthHandler.js
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 // Dynamically determine redirect URI based on current domain
@@ -72,6 +74,9 @@ export const getOAuthUrl = (integrationType) => {
   // Get current redirect URI dynamically
   const redirectUri = getRedirectUri();
   
+  // Store the exact redirect_uri we're using for this OAuth flow
+  sessionStorage.setItem('oauth_redirect_uri', redirectUri);
+  
   console.log(`OAuth Config for ${integrationType}:`, {
     redirectUri,
     clientId: config.clientId?.substring(0, 20) + '...',
@@ -85,6 +90,7 @@ export const getOAuthUrl = (integrationType) => {
     state: JSON.stringify({
       integration: integrationType,
       timestamp: Date.now(),
+      redirect_uri: redirectUri, // Include in state for verification
     }),
   });
 
@@ -109,8 +115,9 @@ export const handleOAuthCallback = async (code, state, supabase) => {
     const integrationType = stateData.integration;
 
     console.log('Starting OAuth callback for:', integrationType);
+    console.log('State data:', stateData);
 
-    // Get current user session - no retries here, should already be validated
+    // Get current user session
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError) {
@@ -164,15 +171,22 @@ export const handleOAuthCallback = async (code, state, supabase) => {
     // Call Edge Function to exchange code for tokens
     const edgeFunctionUrl = `${SUPABASE_URL}/functions/v1/${edgeFunctionName}`;
 
-    // Get current redirect URI to send to backend
-    const redirectUri = getRedirectUri();
+    // CRITICAL: Use the EXACT same redirect_uri that was used in the OAuth initiation
+    // Try to get it from state first, then from sessionStorage, then generate it
+    const redirectUri = stateData.redirect_uri || 
+                       sessionStorage.getItem('oauth_redirect_uri') || 
+                       getRedirectUri();
+    
+    // Clean up
+    sessionStorage.removeItem('oauth_redirect_uri');
     
     console.log('Calling edge function:', {
       url: edgeFunctionUrl,
       integrationType,
       redirectUri,
       accessTokenLength: session.access_token.length,
-      userId: session.user?.id
+      userId: session.user?.id,
+      codeLength: code?.length
     });
 
     const response = await fetch(edgeFunctionUrl, {
@@ -185,7 +199,7 @@ export const handleOAuthCallback = async (code, state, supabase) => {
       body: JSON.stringify({
         code,
         integration_type: integrationType,
-        redirect_uri: redirectUri,
+        redirect_uri: redirectUri, // Send the exact same redirect_uri
       }),
     });
 
@@ -210,7 +224,8 @@ export const handleOAuthCallback = async (code, state, supabase) => {
       if (response.status === 401) {
         throw new Error('Authentication failed. Your session may have expired. Please log out, log back in, and try connecting the integration again.');
       } else if (response.status === 400) {
-        throw new Error(errorData.error || errorData.message || 'Invalid OAuth request. Please try again.');
+        const errorMsg = errorData.details?.error_description || errorData.error || 'Invalid OAuth request';
+        throw new Error(`OAuth failed: ${errorMsg}. Please try disconnecting and reconnecting the integration.`);
       } else if (response.status === 500) {
         throw new Error('Server error. Please try again in a moment.');
       } else {
