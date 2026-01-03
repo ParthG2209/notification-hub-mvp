@@ -110,39 +110,44 @@ export const handleOAuthCallback = async (code, state, supabase) => {
 
     console.log('Starting OAuth callback for:', integrationType);
 
-    // Get current user session with retry logic
-    let session = null;
-    let attempts = 0;
-    const maxAttempts = 3;
-
-    while (attempts < maxAttempts && !session) {
-      const { data, error: sessionError } = await supabase.auth.getSession();
-      
-      if (data?.session) {
-        session = data.session;
-        console.log('Session retrieved successfully');
-        break;
-      }
-      
-      if (sessionError) {
-        console.error('Session retrieval error:', sessionError);
-      }
-      
-      attempts++;
-      if (attempts < maxAttempts) {
-        console.log(`Retrying session retrieval (${attempts}/${maxAttempts})...`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
+    // Get current user session - no retries here, should already be validated
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     
-    if (!session) {
-      throw new Error('Unable to retrieve authentication session. Please log in again.');
+    if (sessionError) {
+      console.error('Session retrieval error:', sessionError);
+      throw new Error('Failed to retrieve authentication session. Please try again.');
     }
+
+    if (!sessionData?.session) {
+      throw new Error('No active session found. Please log in again.');
+    }
+
+    const session = sessionData.session;
 
     // Verify the access token is valid
-    if (!session.access_token || session.access_token.length < 10) {
-      throw new Error('Invalid authentication token. Please log in again.');
+    if (!session.access_token || session.access_token.length < 20) {
+      console.error('Invalid token:', {
+        hasToken: !!session.access_token,
+        length: session.access_token?.length
+      });
+      throw new Error('Invalid authentication token. Please log out and log in again.');
     }
+
+    // Verify token hasn't expired
+    const expiresAt = session.expires_at;
+    const now = Math.floor(Date.now() / 1000);
+    
+    if (expiresAt && expiresAt <= now) {
+      console.error('Token expired:', { expiresAt, now });
+      throw new Error('Authentication token has expired. Please log out and log in again.');
+    }
+
+    console.log('Session validated:', {
+      hasAccessToken: true,
+      tokenLength: session.access_token.length,
+      expiresIn: expiresAt - now,
+      userId: session.user?.id
+    });
 
     // Determine which edge function to call
     let edgeFunctionName;
@@ -166,7 +171,8 @@ export const handleOAuthCallback = async (code, state, supabase) => {
       url: edgeFunctionUrl,
       integrationType,
       redirectUri,
-      hasAccessToken: !!session.access_token,
+      accessTokenLength: session.access_token.length,
+      userId: session.user?.id
     });
 
     const response = await fetch(edgeFunctionUrl, {
@@ -174,7 +180,7 @@ export const handleOAuthCallback = async (code, state, supabase) => {
       headers: {
         'Authorization': `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY, // Add anon key for extra validation
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
       body: JSON.stringify({
         code,
@@ -184,8 +190,11 @@ export const handleOAuthCallback = async (code, state, supabase) => {
     });
 
     const responseText = await response.text();
-    console.log('Edge function response status:', response.status);
-    console.log('Edge function response body:', responseText);
+    console.log('Edge function response:', {
+      status: response.status,
+      statusText: response.statusText,
+      body: responseText
+    });
 
     if (!response.ok) {
       let errorData;
@@ -199,25 +208,21 @@ export const handleOAuthCallback = async (code, state, supabase) => {
       
       // Provide better error messages
       if (response.status === 401) {
-        throw new Error('Authentication failed. Your session may have expired. Please log in again and try connecting the integration.');
+        throw new Error('Authentication failed. Your session may have expired. Please log out, log back in, and try connecting the integration again.');
       } else if (response.status === 400) {
         throw new Error(errorData.error || errorData.message || 'Invalid OAuth request. Please try again.');
+      } else if (response.status === 500) {
+        throw new Error('Server error. Please try again in a moment.');
       } else {
-        throw new Error(errorData.error || errorData.message || 'OAuth exchange failed. Please try again.');
+        throw new Error(errorData.error || errorData.message || 'Failed to connect integration. Please try again.');
       }
     }
 
-    const data = JSON.parse(responseText);
-    console.log('OAuth callback successful:', data);
-    return data;
+    const responseData = JSON.parse(responseText);
+    console.log('OAuth callback successful:', responseData);
+    return responseData;
   } catch (error) {
     console.error('OAuth callback error:', error);
-    
-    // Enhance error message for common issues
-    if (error.message.includes('JWT') || error.message.includes('token')) {
-      throw new Error('Authentication session invalid. Please log out, log back in, and try connecting the integration again.');
-    }
-    
     throw error;
   }
 };
