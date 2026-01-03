@@ -1,3 +1,5 @@
+// backend/supabase/functions/_shared/supabase.ts
+
 // Supabase client for Edge Functions
 import { createClient, SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
@@ -25,7 +27,6 @@ export const supabaseAdmin: SupabaseClient = createClient(
 // Create Supabase client from request (uses user's JWT)
 export function createSupabaseClient(req: Request): SupabaseClient {
   const authHeader = req.headers.get('Authorization');
-  const token = authHeader?.replace('Bearer ', '');
   
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error('Missing Supabase environment variables');
@@ -36,9 +37,9 @@ export function createSupabaseClient(req: Request): SupabaseClient {
     SUPABASE_ANON_KEY,
     {
       global: {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeader ? {
+          Authorization: authHeader,
+        } : {},
       },
       auth: {
         autoRefreshToken: false,
@@ -48,7 +49,9 @@ export function createSupabaseClient(req: Request): SupabaseClient {
   );
 }
 
-// Get user from JWT token with better error handling
+// Get user from JWT token - SIMPLIFIED VERSION
+// When JWT verification is enabled at the gateway level,
+// the JWT is already validated before reaching your code
 export async function getUserFromRequest(req: Request): Promise<{ user: any | null; error: string | null }> {
   try {
     const authHeader = req.headers.get('Authorization');
@@ -58,45 +61,22 @@ export async function getUserFromRequest(req: Request): Promise<{ user: any | nu
       return { user: null, error: 'No authorization header' };
     }
     
-    const token = authHeader.replace('Bearer ', '');
-    
-    if (!token || token.length < 20) {
-      console.error('Invalid token format:', { length: token?.length });
-      return { user: null, error: 'Invalid token format' };
-    }
-    
-    console.log('Attempting to get user from token:', {
-      tokenLength: token.length,
-      tokenPrefix: token.substring(0, 10) + '...'
-    });
+    console.log('Auth header present, creating client...');
     
     // Create a client with the user's token
-    const supabaseClient = createClient(
-      SUPABASE_URL!,
-      SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: authHeader,
-          },
-        },
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
+    const supabaseClient = createSupabaseClient(req);
     
-    // Use getUser() with the user's token - this validates the JWT
+    // When JWT verification is enabled at the gateway, the token is already validated
+    // We just need to get the user data
     const { data: { user }, error } = await supabaseClient.auth.getUser();
     
     if (error) {
-      console.error('Error getting user from token:', error);
+      console.error('Error getting user:', error);
       return { user: null, error: error.message };
     }
     
     if (!user) {
-      console.error('No user found for token');
+      console.error('No user found');
       return { user: null, error: 'User not found' };
     }
     
