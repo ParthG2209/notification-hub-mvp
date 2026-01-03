@@ -1,4 +1,3 @@
-// frontend/src/pages/Integrations.jsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIntegrations } from '../contexts/IntegrationContext';
@@ -11,7 +10,7 @@ import { motion } from 'framer-motion';
 
 export default function Integrations() {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, ensureFreshSession } = useAuth();
   const toast = useToast();
   const { 
     availableIntegrations, 
@@ -29,13 +28,29 @@ export default function Integrations() {
     }
   };
 
-  const handleConnect = (integrationId) => {
+  const handleConnect = async (integrationId) => {
     try {
+      console.log(`Starting connection for ${integrationId}...`);
+      
+      // Ensure we have a fresh session before initiating OAuth
+      const session = await ensureFreshSession();
+      
+      if (!session) {
+        toast.error('Your session has expired. Please log in again.');
+        navigate('/login');
+        return;
+      }
+      
+      console.log('Fresh session confirmed, initiating OAuth...');
       toast.info(`Connecting to ${integrationId}...`);
+      
+      // Small delay to ensure the toast is shown
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       initiateOAuth(integrationId);
     } catch (error) {
       console.error('OAuth initiation error:', error);
-      toast.error('Failed to initiate OAuth flow');
+      toast.error(error.message || 'Failed to initiate OAuth flow. Please try again.');
     }
   };
 
