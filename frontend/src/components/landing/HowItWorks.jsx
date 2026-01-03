@@ -63,8 +63,8 @@ const HowItWorks = () => {
                 <div className="hidden lg:block absolute top-12 left-full w-8 h-0.5 bg-white/10 z-0" />
               )}
 
-              {/* Card */}
-              <div className="relative bg-zinc-900 border border-white/10 rounded-lg p-6 h-full">
+              {/* Glassmorphism Card */}
+              <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-6 h-full hover:bg-white/10 transition-all">
                 {/* Step number badge */}
                 <div className="absolute -top-3 -left-3 w-10 h-10 bg-white text-black rounded-full flex items-center justify-center font-bold text-lg">
                   {index + 1}
