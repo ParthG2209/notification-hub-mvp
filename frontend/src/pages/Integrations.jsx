@@ -1,13 +1,14 @@
 // frontend/src/pages/Integrations.jsx
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIntegrations } from '../contexts/IntegrationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/common/Toast';
 import { Button } from '../components/common/Button';
+import { supabase } from '../services/supabase/client';
 import { initiateOAuth } from '../services/oauth/oauthHandler';
-import { Bell, ArrowLeft, Check, Plus, ExternalLink, RefreshCw } from 'lucide-react';
+import { Bell, ArrowLeft, Check, Plus, ExternalLink, RefreshCw, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Integrations() {
@@ -22,6 +23,8 @@ export default function Integrations() {
     isConnected,
     refetch
   } = useIntegrations();
+
+  const [syncing, setSyncing] = useState({});
 
   // Debug: Log integrations whenever they change
   useEffect(() => {
@@ -79,6 +82,61 @@ export default function Integrations() {
     } catch (error) {
       console.error('Refresh error:', error);
       toast.error('Failed to refresh integrations');
+    }
+  };
+
+  const handleSync = async (integrationId) => {
+    try {
+      setSyncing(prev => ({ ...prev, [integrationId]: true }));
+      toast.info(`Syncing ${integrationId}...`);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast.error('Please log in again');
+        return;
+      }
+
+      // Call the appropriate sync function
+      let functionName = '';
+      if (integrationId === 'gmail') {
+        functionName = 'sync-gmail';
+      } else {
+        toast.info('Sync not yet available for this integration');
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Sync failed');
+      }
+
+      const result = await response.json();
+      
+      toast.success(`Synced ${result.new || 0} new notifications from ${integrationId}!`);
+      
+      // Navigate to dashboard to see the notifications
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1500);
+
+    } catch (error) {
+      console.error('Sync error:', error);
+      toast.error(error.message || 'Failed to sync');
+    } finally {
+      setSyncing(prev => ({ ...prev, [integrationId]: false }));
     }
   };
 
@@ -190,13 +248,36 @@ export default function Integrations() {
                       </p>
                       
                       {connected ? (
-                        <Button
-                          variant="outline"
-                          className="w-full text-white border-white/20 hover:bg-red-500/20 hover:border-red-500/30"
-                          onClick={() => handleDisconnect(integration.id)}
-                        >
-                          Disconnect
-                        </Button>
+                        <div className="space-y-2">
+                          {/* Sync Button for Gmail */}
+                          {integration.id === 'gmail' && (
+                            <Button
+                              className="w-full"
+                              onClick={() => handleSync(integration.id)}
+                              disabled={syncing[integration.id]}
+                            >
+                              {syncing[integration.id] ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Syncing...
+                                </>
+                              ) : (
+                                <>
+                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                  Sync Emails
+                                </>
+                              )}
+                            </Button>
+                          )}
+                          
+                          <Button
+                            variant="outline"
+                            className="w-full text-white border-white/20 hover:bg-red-500/20 hover:border-red-500/30"
+                            onClick={() => handleDisconnect(integration.id)}
+                          >
+                            Disconnect
+                          </Button>
+                        </div>
                       ) : (
                         <Button
                           className="w-full"
@@ -236,7 +317,7 @@ export default function Integrations() {
               </li>
               <li className="flex items-start gap-3">
                 <span className="flex-shrink-0 w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center text-sm">3</span>
-                <span>We securely receive and store your notifications</span>
+                <span>Click "Sync" to fetch your latest emails and notifications</span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="flex-shrink-0 w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center text-sm">4</span>
