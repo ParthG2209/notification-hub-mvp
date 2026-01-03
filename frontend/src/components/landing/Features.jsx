@@ -70,13 +70,13 @@ const Features = () => {
               viewport={{ once: true }}
               className="group relative"
             >
-              {/* Card */}
-              <div className="relative border border-white/10 rounded-lg p-6 bg-zinc-900 hover:bg-zinc-800 transition-all h-full">
+              {/* Glassmorphism Card */}
+              <div className="relative border border-white/10 rounded-lg p-6 bg-white/5 backdrop-blur-md hover:bg-white/10 transition-all h-full">
                 {/* Accent bar */}
                 <div className={`absolute top-0 left-0 w-full h-1 ${feature.accent} rounded-t-lg`} />
                 
                 {/* Icon */}
-                <div className={`mb-4 p-3 ${feature.accent} rounded-lg inline-flex text-white`}>
+                <div className={`mb-4 p-3 ${feature.accent} rounded-lg inline-flex text-white backdrop-blur-sm bg-opacity-20`}>
                   {feature.icon}
                 </div>
                 
