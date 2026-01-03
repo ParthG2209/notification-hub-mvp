@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Landing from './pages/Landing';  // NEW IMPORT
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Integrations from './pages/Integrations';
@@ -12,7 +13,6 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import Diagnostics from './pages/Diagnostics';
 
 function App() {
-  // Initialize theme on app load
   React.useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
@@ -20,7 +20,6 @@ function App() {
     } else if (savedTheme === 'light') {
       document.documentElement.classList.remove('dark');
     } else {
-      // Default to system preference
       if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
         document.documentElement.classList.add('dark');
       }
@@ -34,8 +33,8 @@ function App() {
           <IntegrationProvider>
             <Router>
               <Routes>
-                {/* Redirect root to login */}
-                <Route path="/" element={<Navigate to="/login" replace />} />
+                {/* Landing page as the root */}
+                <Route path="/" element={<Landing />} />
                 
                 {/* Public routes */}
                 <Route path="/login" element={<Login />} />
