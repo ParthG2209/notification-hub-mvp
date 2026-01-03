@@ -1,8 +1,11 @@
+// frontend/src/pages/0AuthCallback.jsx
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../services/supabase/client';
 import { handleOAuthCallback } from '../services/oauth/oauthHandler';
 import { useToast } from '../components/common/Toast';
+import { useIntegrations } from '../contexts/IntegrationContext';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -10,6 +13,7 @@ export default function OAuthCallback() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const toast = useToast();
+  const { refetch } = useIntegrations();
   const [status, setStatus] = useState('processing');
 
   useEffect(() => {
@@ -59,13 +63,13 @@ export default function OAuthCallback() {
           console.log('Handling Integration OAuth callback for:', storedIntegration);
           setStatus('processing');
           
-          // IMPORTANT: Wait longer for session to be fully established
+          // Wait for session to be fully established
           console.log('Waiting for session to stabilize...');
           await new Promise(resolve => setTimeout(resolve, 2500));
           
-          // Try to get session with multiple retries and longer waits
+          // Get session
           let session = null;
-          let retries = 5; // Increased from 3
+          let retries = 5;
           
           while (retries > 0 && !session) {
             console.log(`Attempting to get session (${6 - retries}/5)...`);
@@ -73,17 +77,12 @@ export default function OAuthCallback() {
             const { data, error: sessionError } = await supabase.auth.getSession();
             
             if (data?.session) {
-              // Verify the session is actually valid
               const expiresAt = data.session.expires_at;
               const now = Math.floor(Date.now() / 1000);
               
               if (expiresAt && expiresAt > now) {
                 session = data.session;
-                console.log('Valid session found:', {
-                  hasAccessToken: !!session.access_token,
-                  tokenLength: session.access_token?.length,
-                  expiresIn: expiresAt - now
-                });
+                console.log('Valid session found');
                 break;
               } else {
                 console.warn('Session expired, refreshing...');
@@ -105,7 +104,6 @@ export default function OAuthCallback() {
             
             retries--;
             if (retries > 0) {
-              // Exponential backoff
               const waitTime = (6 - retries) * 1000;
               console.log(`Waiting ${waitTime}ms before retry...`);
               await new Promise(resolve => setTimeout(resolve, waitTime));
@@ -117,12 +115,8 @@ export default function OAuthCallback() {
             throw new Error('Authentication session not found. Please log out, log back in, and try connecting the integration again.');
           }
 
-          // Double-check we have a valid access token
           if (!session.access_token || session.access_token.length < 20) {
-            console.error('Invalid access token:', {
-              hasToken: !!session.access_token,
-              length: session.access_token?.length
-            });
+            console.error('Invalid access token');
             throw new Error('Invalid authentication token. Please log out, log back in, and try again.');
           }
 
@@ -135,6 +129,11 @@ export default function OAuthCallback() {
           
           setStatus('success');
           toast.success(result.message || 'Integration connected successfully!');
+          
+          // IMPORTANT: Refetch integrations after successful connection
+          console.log('Refetching integrations...');
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Small delay to ensure DB has updated
+          await refetch();
           
           setTimeout(() => navigate('/integrations', { replace: true }), 1500);
         } else if (!storedIntegration && code) {
@@ -158,7 +157,6 @@ export default function OAuthCallback() {
         console.error('OAuth callback error:', error);
         setStatus('error');
         
-        // Provide more specific error messages
         let errorMessage = error.message || 'Authentication failed';
         
         toast.error(errorMessage);
@@ -174,7 +172,7 @@ export default function OAuthCallback() {
     };
 
     handleCallback();
-  }, [navigate, searchParams, toast]);
+  }, [navigate, searchParams, toast, refetch]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-agency-gradient text-white">
