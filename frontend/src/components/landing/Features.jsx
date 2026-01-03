@@ -5,65 +5,46 @@ import { Bell, Zap, Shield, Sparkles, CheckCircle, TrendingUp } from 'lucide-rea
 const Features = () => {
   const features = [
     {
-      icon: <Bell className="h-8 w-8 text-blue-400" />,
+      icon: <Bell className="h-6 w-6" />,
       title: "Unified Dashboard",
       description: "View all your notifications from Gmail, Slack, Google Drive, and HubSpot in one beautiful, organized interface.",
-      color: "from-blue-500/20 to-cyan-500/20"
+      accent: "bg-blue-500"
     },
     {
-      icon: <Zap className="h-8 w-8 text-purple-400" />,
+      icon: <Zap className="h-6 w-6" />,
       title: "Real-time Sync",
       description: "Get instant notifications as they arrive. Stay updated without constantly checking multiple apps.",
-      color: "from-purple-500/20 to-pink-500/20"
+      accent: "bg-purple-500"
     },
     {
-      icon: <Shield className="h-8 w-8 text-green-400" />,
+      icon: <Shield className="h-6 w-6" />,
       title: "Secure & Private",
       description: "Your data is encrypted and secure. We never store your passwords and you maintain full control.",
-      color: "from-green-500/20 to-emerald-500/20"
+      accent: "bg-green-500"
     },
     {
-      icon: <Sparkles className="h-8 w-8 text-orange-400" />,
+      icon: <Sparkles className="h-6 w-6" />,
       title: "Smart Filtering",
       description: "Organize notifications by source, read status, or date. Find what matters most, instantly.",
-      color: "from-orange-500/20 to-red-500/20"
+      accent: "bg-orange-500"
     },
     {
-      icon: <CheckCircle className="h-8 w-8 text-indigo-400" />,
+      icon: <CheckCircle className="h-6 w-6" />,
       title: "One-Click Actions",
       description: "Mark as read, delete, or archive notifications without leaving the dashboard. Streamline your workflow.",
-      color: "from-indigo-500/20 to-blue-500/20"
+      accent: "bg-indigo-500"
     },
     {
-      icon: <TrendingUp className="h-8 w-8 text-pink-400" />,
+      icon: <TrendingUp className="h-6 w-6" />,
       title: "Analytics & Insights",
       description: "Track notification trends, see what's important, and understand your communication patterns.",
-      color: "from-pink-500/20 to-purple-500/20"
+      accent: "bg-pink-500"
     }
   ];
 
   return (
-    <section className="py-20 px-6 relative bg-agency-gradient" id="features">
-      {/* Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div 
-          className="absolute top-1/4 -right-24 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-      </div>
-
-      {/* Grid Pattern Overlay */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.02)_1px,transparent_1px)] bg-[size:72px_72px] [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_80%)] pointer-events-none"></div>
-
-      <div className="max-w-7xl mx-auto relative">
+    <section className="py-20 px-6 bg-black" id="features">
+      <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -72,14 +53,10 @@ const Features = () => {
           className="text-center mb-16"
         >
           <h2 className="text-4xl md:text-5xl font-bold mb-4 text-white">
-            Everything you need,
-            <span className="block mt-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              all in one place
-            </span>
+            Everything you need, all in one place
           </h2>
           <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-            Stop juggling multiple apps. Notification Hub brings all your important updates together
-            in a single, beautiful dashboard.
+            Stop juggling multiple apps. Notification Hub brings all your important updates together.
           </p>
         </motion.div>
 
@@ -91,15 +68,21 @@ const Features = () => {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
               viewport={{ once: true }}
-              className="relative group"
+              className="group relative"
             >
-              <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} rounded-2xl blur-xl group-hover:blur-2xl transition-all`} />
-              <div className="relative bg-black/40 border border-white/10 rounded-2xl p-6 backdrop-blur-sm hover:bg-black/50 transition-all h-full">
-                <div className="mb-4 p-3 bg-white/5 rounded-xl inline-block">
+              {/* Card */}
+              <div className="relative border border-white/10 rounded-lg p-6 bg-zinc-900 hover:bg-zinc-800 transition-all h-full">
+                {/* Accent bar */}
+                <div className={`absolute top-0 left-0 w-full h-1 ${feature.accent} rounded-t-lg`} />
+                
+                {/* Icon */}
+                <div className={`mb-4 p-3 ${feature.accent} rounded-lg inline-flex text-white`}>
                   {feature.icon}
                 </div>
+                
+                {/* Content */}
                 <h3 className="text-xl font-semibold mb-3 text-white">{feature.title}</h3>
-                <p className="text-gray-400 leading-relaxed">{feature.description}</p>
+                <p className="text-gray-400 leading-relaxed text-sm">{feature.description}</p>
               </div>
             </motion.div>
           ))}
