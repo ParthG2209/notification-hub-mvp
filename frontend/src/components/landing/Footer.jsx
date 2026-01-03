@@ -3,55 +3,54 @@ import { Grid, Github, Twitter, Linkedin } from 'lucide-react';
 
 const Footer = () => {
   return (
-    <footer className="border-t border-white/10 bg-black/40 backdrop-blur-xl">
+    <footer className="border-t border-white/10 bg-black">
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 p-2 rounded-lg border border-white/10">
-                <Grid className="h-6 w-6 text-blue-400" />
+              <div className="bg-white p-2 rounded-lg">
+                <Grid className="h-5 w-5 text-black" />
               </div>
-              <span className="text-xl font-bold text-white">Notification Hub</span>
+              <span className="text-lg font-bold text-white">Notification Hub</span>
             </div>
             <p className="text-gray-400 text-sm max-w-md mb-4">
-              The simplest way to manage all your notifications in one place. 
-              Connect your favorite apps and never miss what matters.
+              The simplest way to manage all your notifications in one place.
             </p>
-            <div className="flex gap-4">
+            <div className="flex gap-3">
               <a
                 href="https://github.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors border border-white/10"
+                className="p-2 border border-white/10 hover:bg-white/5 rounded-lg transition-colors"
                 aria-label="GitHub"
               >
-                <Github className="h-5 w-5 text-gray-400 hover:text-white transition-colors" />
+                <Github className="h-5 w-5 text-gray-400" />
               </a>
               <a
                 href="https://twitter.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors border border-white/10"
+                className="p-2 border border-white/10 hover:bg-white/5 rounded-lg transition-colors"
                 aria-label="Twitter"
               >
-                <Twitter className="h-5 w-5 text-gray-400 hover:text-white transition-colors" />
+                <Twitter className="h-5 w-5 text-gray-400" />
               </a>
               <a
                 href="https://linkedin.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors border border-white/10"
+                className="p-2 border border-white/10 hover:bg-white/5 rounded-lg transition-colors"
                 aria-label="LinkedIn"
               >
-                <Linkedin className="h-5 w-5 text-gray-400 hover:text-white transition-colors" />
+                <Linkedin className="h-5 w-5 text-gray-400" />
               </a>
             </div>
           </div>
 
           {/* Product Links */}
           <div>
-            <h3 className="font-semibold mb-4 text-white">Product</h3>
+            <h3 className="font-semibold mb-4 text-white text-sm">Product</h3>
             <ul className="space-y-2 text-sm">
               <li>
                 <a href="#features" className="text-gray-400 hover:text-white transition-colors">
@@ -78,11 +77,11 @@ const Footer = () => {
 
           {/* Company Links */}
           <div>
-            <h3 className="font-semibold mb-4 text-white">Company</h3>
+            <h3 className="font-semibold mb-4 text-white text-sm">Company</h3>
             <ul className="space-y-2 text-sm">
               <li>
                 <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  About Us
+                  About
                 </a>
               </li>
               <li>
@@ -92,12 +91,12 @@ const Footer = () => {
               </li>
               <li>
                 <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Privacy Policy
+                  Privacy
                 </a>
               </li>
               <li>
                 <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Terms of Service
+                  Terms
                 </a>
               </li>
             </ul>
@@ -107,17 +106,17 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-white/10">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-500 text-sm">
               © 2026 Notification Hub. All rights reserved.
             </p>
             <div className="flex gap-6 text-sm">
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+              <a href="#" className="text-gray-500 hover:text-white transition-colors">
                 Privacy
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+              <a href="#" className="text-gray-500 hover:text-white transition-colors">
                 Terms
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+              <a href="#" className="text-gray-500 hover:text-white transition-colors">
                 Contact
               </a>
             </div>
