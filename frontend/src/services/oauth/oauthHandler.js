@@ -108,11 +108,40 @@ export const handleOAuthCallback = async (code, state, supabase) => {
     const stateData = JSON.parse(state);
     const integrationType = stateData.integration;
 
-    // Get current user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    console.log('Starting OAuth callback for:', integrationType);
+
+    // Get current user session with retry logic
+    let session = null;
+    let attempts = 0;
+    const maxAttempts = 3;
+
+    while (attempts < maxAttempts && !session) {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      
+      if (data?.session) {
+        session = data.session;
+        console.log('Session retrieved successfully');
+        break;
+      }
+      
+      if (sessionError) {
+        console.error('Session retrieval error:', sessionError);
+      }
+      
+      attempts++;
+      if (attempts < maxAttempts) {
+        console.log(`Retrying session retrieval (${attempts}/${maxAttempts})...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
     
-    if (sessionError || !session) {
-      throw new Error('Not authenticated. Please log in first.');
+    if (!session) {
+      throw new Error('Unable to retrieve authentication session. Please log in again.');
+    }
+
+    // Verify the access token is valid
+    if (!session.access_token || session.access_token.length < 10) {
+      throw new Error('Invalid authentication token. Please log in again.');
     }
 
     // Determine which edge function to call
@@ -137,6 +166,7 @@ export const handleOAuthCallback = async (code, state, supabase) => {
       url: edgeFunctionUrl,
       integrationType,
       redirectUri,
+      hasAccessToken: !!session.access_token,
     });
 
     const response = await fetch(edgeFunctionUrl, {
@@ -144,24 +174,50 @@ export const handleOAuthCallback = async (code, state, supabase) => {
       headers: {
         'Authorization': `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY, // Add anon key for extra validation
       },
       body: JSON.stringify({
         code,
         integration_type: integrationType,
-        redirect_uri: redirectUri, // Send current redirect URI
+        redirect_uri: redirectUri,
       }),
     });
 
+    const responseText = await response.text();
+    console.log('Edge function response status:', response.status);
+    console.log('Edge function response body:', responseText);
+
     if (!response.ok) {
-      const error = await response.json();
-      console.error('Edge function error:', error);
-      throw new Error(error.error || error.message || 'OAuth exchange failed');
+      let errorData;
+      try {
+        errorData = JSON.parse(responseText);
+      } catch (e) {
+        errorData = { error: responseText };
+      }
+      
+      console.error('Edge function error:', errorData);
+      
+      // Provide better error messages
+      if (response.status === 401) {
+        throw new Error('Authentication failed. Your session may have expired. Please log in again and try connecting the integration.');
+      } else if (response.status === 400) {
+        throw new Error(errorData.error || errorData.message || 'Invalid OAuth request. Please try again.');
+      } else {
+        throw new Error(errorData.error || errorData.message || 'OAuth exchange failed. Please try again.');
+      }
     }
 
-    const data = await response.json();
+    const data = JSON.parse(responseText);
+    console.log('OAuth callback successful:', data);
     return data;
   } catch (error) {
     console.error('OAuth callback error:', error);
+    
+    // Enhance error message for common issues
+    if (error.message.includes('JWT') || error.message.includes('token')) {
+      throw new Error('Authentication session invalid. Please log out, log back in, and try connecting the integration again.');
+    }
+    
     throw error;
   }
 };
@@ -176,7 +232,8 @@ export const initiateOAuth = (integrationType) => {
     // Store integration type in sessionStorage for callback
     sessionStorage.setItem('oauth_integration', integrationType);
     
-    console.log(`Redirecting to OAuth provider for ${integrationType}...`);
+    console.log(`Initiating OAuth flow for ${integrationType}...`);
+    console.log('Redirect URI:', getRedirectUri());
     
     // Redirect to OAuth provider
     window.location.href = authUrl;
