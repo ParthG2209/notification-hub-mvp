@@ -71,7 +71,8 @@ const IntegrationsSection = () => {
               whileHover={{ y: -5 }}
               className="relative group"
             >
-              <div className={`border ${integration.borderColor} ${integration.bgColor} rounded-lg p-6 transition-all h-full flex flex-col`}>
+              {/* Glassmorphism Card */}
+              <div className={`border ${integration.borderColor} bg-white/5 backdrop-blur-md rounded-lg p-6 transition-all h-full flex flex-col hover:bg-white/10`}>
                 {/* Icon */}
                 <div className={`${integration.iconColor} mb-4`}>
                   {integration.icon}
