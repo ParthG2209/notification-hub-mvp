@@ -47,48 +47,76 @@ const HeroSection = ({
     const [showArrow, setShowArrow] = useState(true);
 
     const resolvedCanvasColorsRef = useRef({
-        strokeStyle: { r: 128, g: 128, b: 128 },
+        strokeStyle: { r: 250, g: 250, b: 250 }, // Default to white
     });
 
-    useEffect(() => {
+    // NEW: Force color update function
+    const updateCanvasColors = useCallback(() => {
         const tempElement = document.createElement('div');
         tempElement.style.display = 'none';
+        tempElement.style.color = 'var(--foreground)';
         document.body.appendChild(tempElement);
+        
+        const computedFgColor = getComputedStyle(tempElement).color;
+        const parsedFgColor = parseRgbColor(computedFgColor);
+        
+        if (parsedFgColor) {
+            resolvedCanvasColorsRef.current.strokeStyle = parsedFgColor;
+        } else {
+            resolvedCanvasColorsRef.current.strokeStyle = { r: 250, g: 250, b: 250 };
+        }
+        
+        document.body.removeChild(tempElement);
+        
+        console.log('Canvas colors updated:', resolvedCanvasColorsRef.current.strokeStyle);
+    }, []);
 
-        const updateResolvedColors = () => {
-            tempElement.style.color = 'var(--foreground)';
-            const computedFgColor = getComputedStyle(tempElement).color;
-            const parsedFgColor = parseRgbColor(computedFgColor);
-            
-            if (parsedFgColor) {
-                resolvedCanvasColorsRef.current.strokeStyle = parsedFgColor;
-            } else {
-                resolvedCanvasColorsRef.current.strokeStyle = { r: 250, g: 250, b: 250 };
-            }
-        };
+    // UPDATED: Better theme detection and color resolution
+    useEffect(() => {
+        // Initial color setup
+        updateCanvasColors();
 
-        updateResolvedColors();
-
+        // Watch for theme changes
         const observer = new MutationObserver((mutationsList) => {
             for (const mutation of mutationsList) {
                 if (mutation.type === 'attributes' && 
                     mutation.attributeName === 'class' && 
                     mutation.target === document.documentElement) {
-                    updateResolvedColors();
+                    console.log('Theme change detected, updating colors...');
+                    updateCanvasColors();
                     break;
                 }
             }
         });
 
-        observer.observe(document.documentElement, { attributes: true });
+        observer.observe(document.documentElement, { 
+            attributes: true,
+            attributeFilter: ['class']
+        });
 
-        return () => {
-            observer.disconnect();
-            if (tempElement.parentNode) {
-                tempElement.parentNode.removeChild(tempElement);
+        // IMPORTANT: Also update colors when component becomes visible again
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                console.log('Page became visible, updating colors...');
+                setTimeout(() => updateCanvasColors(), 100);
             }
         };
-    }, []);
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        // Cleanup
+        return () => {
+            observer.disconnect();
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [updateCanvasColors]);
+
+    // UPDATED: Re-check colors when canvas is mounted or context changes
+    useEffect(() => {
+        if (canvasRef.current && ctxRef.current) {
+            updateCanvasColors();
+        }
+    }, [updateCanvasColors]);
 
     // Check scroll position to hide arrow
     useEffect(() => {
@@ -177,6 +205,8 @@ const HeroSection = ({
         const updateCanvasSize = () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            // Update colors when canvas is resized
+            updateCanvasColors();
         };
 
         const handleMouseMove = (e) => {
@@ -204,7 +234,7 @@ const HeroSection = ({
                 cancelAnimationFrame(animationFrameIdRef.current);
             }
         };
-    }, [drawArrow]);
+    }, [drawArrow, updateCanvasColors]);
 
     useEffect(() => {
         const videoElement = videoRef.current;
