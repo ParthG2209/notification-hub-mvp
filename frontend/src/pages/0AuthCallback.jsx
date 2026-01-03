@@ -71,11 +71,34 @@ export default function OAuthCallback() {
           console.log('Handling Integration OAuth callback for:', storedIntegration);
           setStatus('processing');
           
-          // Make sure user is authenticated
-          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-          if (sessionError || !session) {
-            throw new Error('You must be logged in to connect integrations');
+          // Make sure user is authenticated - with retry logic
+          let session = null;
+          let retries = 3;
+          
+          while (retries > 0 && !session) {
+            const { data, error: sessionError } = await supabase.auth.getSession();
+            
+            if (data?.session) {
+              session = data.session;
+              break;
+            }
+            
+            if (sessionError) {
+              console.warn('Session error, retrying...', sessionError);
+            }
+            
+            retries--;
+            if (retries > 0) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
           }
+          
+          if (!session) {
+            console.error('No valid session after retries');
+            throw new Error('Authentication session expired. Please log in again and try connecting the integration.');
+          }
+
+          console.log('Valid session found, proceeding with OAuth callback');
 
           const result = await handleOAuthCallback(code, state, supabase);
           
@@ -107,7 +130,15 @@ export default function OAuthCallback() {
       } catch (error) {
         console.error('OAuth callback error:', error);
         setStatus('error');
-        toast.error(error.message || 'Authentication failed');
+        
+        // Provide more specific error messages
+        let errorMessage = error.message || 'Authentication failed';
+        
+        if (errorMessage.includes('JWT') || errorMessage.includes('session')) {
+          errorMessage = 'Your session has expired. Please log in again and try connecting the integration.';
+        }
+        
+        toast.error(errorMessage);
         
         // Clear stored integration type on error
         sessionStorage.removeItem('oauth_integration');
