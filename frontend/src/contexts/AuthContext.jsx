@@ -149,6 +149,21 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
+  const signInWithSlack = async () => {
+    // Clear any stored integration type to ensure this is treated as auth
+    sessionStorage.removeItem('oauth_integration');
+    
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'slack',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        skipBrowserRedirect: false
+      }
+    });
+    if (error) throw error;
+    return data;
+  };
+
   // Email/Password Sign In
   const signInWithPassword = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -227,6 +242,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     signInWithGoogle,
     signInWithGithub,
+    signInWithSlack,
     signInWithPassword,
     signUpWithPassword,
     signInWithEmail,
@@ -234,7 +250,7 @@ export const AuthProvider = ({ children }) => {
     updatePassword,
     signOut,
     refreshSession,
-    ensureFreshSession, // Export this for use in OAuth flows
+    ensureFreshSession,
   };
 
   return (
