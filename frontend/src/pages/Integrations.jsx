@@ -8,7 +8,7 @@ import { useToast } from '../components/common/Toast';
 import { Button } from '../components/common/Button';
 import { supabase } from '../services/supabase/client';
 import { initiateOAuth } from '../services/oauth/oauthHandler';
-import { Bell, ArrowLeft, Check, Plus, ExternalLink, RefreshCw, Loader2 } from 'lucide-react';
+import { Bell, ArrowLeft, Check, Plus, ExternalLink, RefreshCw, Loader2, Grid } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Integrations() {
@@ -141,28 +141,41 @@ export default function Integrations() {
   };
 
   return (
-    <div className="min-h-screen bg-agency-gradient text-white">
+    <div className="min-h-screen bg-black text-white relative">
+      {/* Grid Background */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{
+          background: '#000000',
+          backgroundImage: `
+            linear-gradient(to right, rgba(75, 85, 99, 0.4) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(75, 85, 99, 0.4) 1px, transparent 1px)
+          `,
+          backgroundSize: '40px 40px',
+        }}
+      />
+
       {/* Header */}
-      <header className="border-b border-white/10 bg-black/20 backdrop-blur-xl">
-        <div className="container mx-auto px-6 py-4">
+      <header className="border-b border-white/10 bg-white/5 backdrop-blur-xl relative z-10">
+        <div className="container mx-auto px-5 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <Button 
                 variant="ghost" 
                 size="icon" 
                 onClick={() => navigate('/dashboard')}
                 className="text-white hover:bg-white/10"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-4 w-4" />
               </Button>
-              <div className="flex items-center gap-3">
-                <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 p-3 rounded-xl border border-white/10">
-                  <Bell className="h-6 w-6 text-blue-400" />
+              <div className="flex items-center gap-2.5">
+                <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 p-2.5 rounded-xl border border-white/10">
+                  <Bell className="h-5 w-5 text-blue-400" />
                 </div>
-                <h1 className="text-2xl font-bold">Integrations</h1>
+                <h1 className="text-xl font-bold">Integrations</h1>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <Button 
                 variant="ghost" 
                 size="icon"
@@ -170,12 +183,12 @@ export default function Integrations() {
                 className="text-white hover:bg-white/10"
                 title="Refresh integrations"
               >
-                <RefreshCw className="h-5 w-5" />
+                <RefreshCw className="h-4 w-4" />
               </Button>
               <Button 
                 variant="ghost" 
                 onClick={handleSignOut}
-                className="text-white hover:bg-white/10"
+                className="text-white hover:bg-white/10 text-sm px-3 py-1.5"
               >
                 Sign Out
               </Button>
@@ -185,37 +198,37 @@ export default function Integrations() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 py-8">
+      <main className="container mx-auto px-5 py-6 relative z-10 scale-90 origin-top">
         <div className="max-w-4xl mx-auto">
           {/* Header Section */}
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
+            className="mb-6"
           >
-            <h2 className="text-3xl font-bold mb-2">Connect Your Apps</h2>
-            <p className="text-gray-400">
+            <h2 className="text-2xl font-bold mb-1.5">Connect Your Apps</h2>
+            <p className="text-gray-400 text-sm">
               Connect your favorite apps to receive notifications in one unified hub
             </p>
             {/* Debug info */}
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-gray-500 mt-1.5">
               Connected: {integrations.length} integration{integrations.length !== 1 ? 's' : ''}
             </p>
           </motion.div>
 
           {loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+            <div className="text-center py-10">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mx-auto"></div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {availableIntegrations.map((integration, index) => {
                 const connected = isConnected(integration.id);
                 
                 return (
                   <motion.div
                     key={integration.id}
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 18 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
                     className="relative group"
@@ -225,17 +238,17 @@ export default function Integrations() {
                       <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-2xl blur-xl"></div>
                     )}
                     
-                    <div className="relative bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm hover:bg-white/10 transition-all">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`${integration.color} w-14 h-14 rounded-xl flex items-center justify-center text-3xl shadow-lg`}>
+                    <div className="relative bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm hover:bg-white/10 transition-all">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`${integration.color} w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-lg`}>
                             {integration.icon}
                           </div>
                           <div>
-                            <h3 className="font-semibold text-xl">{integration.name}</h3>
+                            <h3 className="font-semibold text-lg">{integration.name}</h3>
                             {connected && (
-                              <span className="text-xs text-green-400 flex items-center gap-1 mt-1">
-                                <Check className="h-3 w-3" />
+                              <span className="text-xs text-green-400 flex items-center gap-1 mt-0.5">
+                                <Check className="h-2.5 w-2.5" />
                                 Connected
                               </span>
                             )}
@@ -243,27 +256,27 @@ export default function Integrations() {
                         </div>
                       </div>
                       
-                      <p className="text-sm text-gray-300 mb-6 leading-relaxed">
+                      <p className="text-xs text-gray-300 mb-5 leading-relaxed">
                         {integration.description}
                       </p>
                       
                       {connected ? (
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           {/* Sync Button for Gmail */}
                           {integration.id === 'gmail' && (
                             <Button
-                              className="w-full"
+                              className="w-full text-sm py-1.5"
                               onClick={() => handleSync(integration.id)}
                               disabled={syncing[integration.id]}
                             >
                               {syncing[integration.id] ? (
                                 <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                                   Syncing...
                                 </>
                               ) : (
                                 <>
-                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                                   Sync Emails
                                 </>
                               )}
@@ -272,7 +285,7 @@ export default function Integrations() {
                           
                           <Button
                             variant="outline"
-                            className="w-full text-white border-white/20 hover:bg-red-500/20 hover:border-red-500/30"
+                            className="w-full text-white border-white/20 hover:bg-red-500/20 hover:border-red-500/30 text-sm py-1.5"
                             onClick={() => handleDisconnect(integration.id)}
                           >
                             Disconnect
@@ -280,12 +293,12 @@ export default function Integrations() {
                         </div>
                       ) : (
                         <Button
-                          className="w-full"
+                          className="w-full text-sm py-1.5"
                           onClick={() => handleConnect(integration.id)}
                         >
-                          <Plus className="h-4 w-4 mr-2" />
+                          <Plus className="h-3.5 w-3.5 mr-1.5" />
                           Connect with {integration.name}
-                          <ExternalLink className="h-4 w-4 ml-2" />
+                          <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
                         </Button>
                       )}
                     </div>
@@ -297,36 +310,36 @@ export default function Integrations() {
 
           {/* Info Section */}
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="mt-12 bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm"
+            className="mt-10 bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm"
           >
-            <h3 className="font-semibold text-xl mb-4 flex items-center gap-2">
-              <span className="text-2xl">🔐</span>
+            <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+              <span className="text-xl">🔐</span>
               How it works
             </h3>
-            <ol className="space-y-3 text-gray-300">
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center text-sm">1</span>
+            <ol className="space-y-2.5 text-gray-300 text-sm">
+              <li className="flex items-start gap-2.5">
+                <span className="flex-shrink-0 w-5 h-5 bg-blue-500/20 rounded-full flex items-center justify-center text-xs">1</span>
                 <span>Connect your apps using secure OAuth authentication</span>
               </li>
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center text-sm">2</span>
+              <li className="flex items-start gap-2.5">
+                <span className="flex-shrink-0 w-5 h-5 bg-blue-500/20 rounded-full flex items-center justify-center text-xs">2</span>
                 <span>Grant permission to access notifications (read-only access)</span>
               </li>
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center text-sm">3</span>
+              <li className="flex items-start gap-2.5">
+                <span className="flex-shrink-0 w-5 h-5 bg-blue-500/20 rounded-full flex items-center justify-center text-xs">3</span>
                 <span>Click "Sync" to fetch your latest emails and notifications</span>
               </li>
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center text-sm">4</span>
+              <li className="flex items-start gap-2.5">
+                <span className="flex-shrink-0 w-5 h-5 bg-blue-500/20 rounded-full flex items-center justify-center text-xs">4</span>
                 <span>View all your notifications in one unified dashboard</span>
               </li>
             </ol>
             
-            <div className="mt-6 pt-6 border-t border-white/10">
-              <p className="text-sm text-gray-400">
+            <div className="mt-5 pt-5 border-t border-white/10">
+              <p className="text-xs text-gray-400">
                 🔒 Your data is encrypted and secure. We never store your passwords and you can disconnect at any time.
               </p>
             </div>
