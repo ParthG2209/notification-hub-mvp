@@ -6,7 +6,6 @@ import {
   User as UserIcon,
   LayoutDashboard,
   Bell,
-  Settings as SettingsIcon,
   Grid
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -59,23 +58,13 @@ const DashboardLayout = () => {
     },
     {
       label: 'Notifications',
-      href: '/dashboard',
+      href: '/notifications',
       icon: Bell,
     },
     {
       label: 'Integrations',
       href: '/integrations',
       icon: Grid,
-    },
-    {
-      label: 'Settings',
-      href: '/settings',
-      icon: SettingsIcon,
-    },
-    {
-      label: 'Profile',
-      href: '/profile',
-      icon: UserIcon,
     },
   ];
 
@@ -165,16 +154,6 @@ const DashboardLayout = () => {
                   onClick={() => setShowUserMenu(false)}
                 />
                 <div className="user-dropdown">
-                  <div
-                    onClick={() => {
-                      handleNavigation('/profile');
-                      setShowUserMenu(false);
-                    }}
-                    className="user-dropdown-item"
-                  >
-                    <UserIcon />
-                    <span>View Profile</span>
-                  </div>
                   <div
                     onClick={() => {
                       handleLogout();
