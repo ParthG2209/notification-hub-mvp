@@ -2,18 +2,31 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { slide as Menu } from 'react-burger-menu';
 import { useIntegrations } from '../contexts/IntegrationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/common/Toast';
 import { Button } from '../components/common/Button';
 import { supabase } from '../services/supabase/client';
 import { initiateOAuth } from '../services/oauth/oauthHandler';
-import { Bell, ArrowLeft, Check, Plus, ExternalLink, RefreshCw, Loader2, Grid } from 'lucide-react';
+import { 
+  Bell, 
+  Check, 
+  Plus, 
+  ExternalLink, 
+  RefreshCw, 
+  Loader2, 
+  Grid,
+  LogOut,
+  User as UserIcon,
+  LayoutDashboard
+} from 'lucide-react';
 import { motion } from 'framer-motion';
+import '../styles/burger-menu.css';
 
 export default function Integrations() {
   const navigate = useNavigate();
-  const { signOut, ensureFreshSession } = useAuth();
+  const { user, signOut, ensureFreshSession } = useAuth();
   const toast = useToast();
   const { 
     availableIntegrations, 
@@ -25,8 +38,9 @@ export default function Integrations() {
   } = useIntegrations();
 
   const [syncing, setSyncing] = useState({});
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  // Debug: Log integrations whenever they change
   useEffect(() => {
     console.log('Current integrations:', integrations);
   }, [integrations]);
@@ -39,6 +53,67 @@ export default function Integrations() {
       console.error('Error signing out:', error);
     }
   };
+
+  const handleStateChange = (state) => {
+    setMenuOpen(state.isOpen);
+  };
+
+  const closeMenu = () => {
+    setMenuOpen(false);
+  };
+
+  const toggleMenu = () => {
+    setMenuOpen(!menuOpen);
+  };
+
+  const handleNavigation = (path) => {
+    navigate(path);
+    closeMenu();
+  };
+
+  const menuItems = [
+    {
+      label: 'Dashboard',
+      href: '/dashboard-home',
+      icon: LayoutDashboard,
+    },
+    {
+      label: 'Notifications',
+      href: '/notifications',
+      icon: Bell,
+    },
+    {
+      label: 'Integrations',
+      href: '/integrations',
+      icon: Grid,
+    },
+  ];
+
+  const isActive = (path) => {
+    return window.location.pathname === path;
+  };
+
+  const MenuToggleIcon = ({ open }) => (
+    <svg
+      strokeWidth={2.5}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 32 32"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`w-8 h-8 text-white transition-transform duration-500 ${open ? '-rotate-45' : ''}`}
+    >
+      <path
+        className={`transition-all duration-500 ${
+          open
+            ? '[stroke-dasharray:20_300] [stroke-dashoffset:-32.42px]'
+            : '[stroke-dasharray:12_63]'
+        }`}
+        d="M27 10 13 10C10.8 10 9 8.2 9 6 9 3.5 10.8 2 13 2 15.2 2 17 3.8 17 6L17 26C17 28.2 18.8 30 21 30 23.2 30 25 28.2 25 26 25 23.8 23.2 22 21 22L7 22"
+      />
+      <path d="M7 16 27 16" />
+    </svg>
+  );
 
   const handleConnect = async (integrationId) => {
     try {
@@ -97,7 +172,6 @@ export default function Integrations() {
         return;
       }
 
-      // Call the appropriate sync function
       let functionName = '';
       if (integrationId === 'gmail') {
         functionName = 'sync-gmail';
@@ -127,7 +201,6 @@ export default function Integrations() {
       
       toast.success(`Synced ${result.new || 0} new notifications from ${integrationId}!`);
       
-      // Navigate to dashboard to see the notifications
       setTimeout(() => {
         navigate('/dashboard');
       }, 1500);
@@ -155,19 +228,87 @@ export default function Integrations() {
         }}
       />
 
+      {/* Menu Toggle Button */}
+      <div className="fixed top-6 left-6 z-[1100]">
+        <button onClick={toggleMenu} className="p-0 bg-transparent border-none cursor-pointer">
+          <MenuToggleIcon open={menuOpen} />
+        </button>
+      </div>
+
+      {/* Burger Menu */}
+      <Menu
+        isOpen={menuOpen}
+        onStateChange={handleStateChange}
+        width="280px"
+        customBurgerIcon={false}
+        customCrossIcon={false}
+      >
+        <div className="px-4 pb-6 mb-6 border-b border-white/10">
+          <h2 className="text-2xl font-bold text-white">Notification Hub</h2>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.href}
+                onClick={() => handleNavigation(item.href)}
+                className={`menu-item ${isActive(item.href) ? 'active' : ''}`}
+              >
+                <Icon />
+                <span>{item.label}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {user && (
+          <div className="menu-user-profile">
+            {showUserMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowUserMenu(false)}
+                />
+                <div className="user-dropdown">
+                  <div
+                    onClick={() => {
+                      handleSignOut();
+                      setShowUserMenu(false);
+                    }}
+                    className="user-dropdown-item logout"
+                  >
+                    <LogOut />
+                    <span>Logout</span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="user-profile-button"
+            >
+              <div className="user-avatar">
+                <UserIcon />
+              </div>
+              <div className="user-info">
+                <p className="user-name">
+                  {user.email?.split('@')[0] || 'User'}
+                </p>
+                <p className="user-email">{user.email}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </Menu>
+
       {/* Header */}
       <header className="border-b border-white/10 bg-white/5 backdrop-blur-xl relative z-10">
         <div className="container mx-auto px-5 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => navigate('/dashboard')}
-                className="text-white hover:bg-white/10"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
+            <div className="flex items-center gap-3 ml-16">
               <div className="flex items-center gap-2.5">
                 <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 p-2.5 rounded-xl border border-white/10">
                   <Bell className="h-5 w-5 text-blue-400" />
@@ -184,13 +325,6 @@ export default function Integrations() {
                 title="Refresh integrations"
               >
                 <RefreshCw className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="ghost" 
-                onClick={handleSignOut}
-                className="text-white hover:bg-white/10 text-sm px-3 py-1.5"
-              >
-                Sign Out
               </Button>
             </div>
           </div>
@@ -210,7 +344,6 @@ export default function Integrations() {
             <p className="text-gray-400 text-sm">
               Connect your favorite apps to receive notifications in one unified hub
             </p>
-            {/* Debug info */}
             <p className="text-xs text-gray-500 mt-1.5">
               Connected: {integrations.length} integration{integrations.length !== 1 ? 's' : ''}
             </p>
@@ -233,7 +366,6 @@ export default function Integrations() {
                     transition={{ delay: index * 0.1 }}
                     className="relative group"
                   >
-                    {/* Glow effect */}
                     {connected && (
                       <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-2xl blur-xl"></div>
                     )}
@@ -262,7 +394,6 @@ export default function Integrations() {
                       
                       {connected ? (
                         <div className="space-y-1.5">
-                          {/* Sync Button for Gmail */}
                           {integration.id === 'gmail' && (
                             <Button
                               className="w-full text-sm py-1.5"
@@ -316,7 +447,6 @@ export default function Integrations() {
             className="mt-10 bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm"
           >
             <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
-              <span className="text-xl">🔐</span>
               How it works
             </h3>
             <ol className="space-y-2.5 text-gray-300 text-sm">
@@ -340,7 +470,7 @@ export default function Integrations() {
             
             <div className="mt-5 pt-5 border-t border-white/10">
               <p className="text-xs text-gray-400">
-                🔒 Your data is encrypted and secure. We never store your passwords and you can disconnect at any time.
+                Your data is encrypted and secure. We never store your passwords and you can disconnect at any time.
               </p>
             </div>
           </motion.div>
