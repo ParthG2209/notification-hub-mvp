@@ -21,7 +21,7 @@ import {
 
 export function AuthPage() {
   const navigate = useNavigate();
-  const { signInWithGoogle, signInWithGithub, signInWithPassword, signUpWithPassword } = useAuth();
+  const { signInWithGoogle, signInWithGithub, signInWithSlack, signInWithPassword, signUpWithPassword } = useAuth();
   const toast = useToast();
   
   const [isLogin, setIsLogin] = useState(true);
@@ -63,8 +63,17 @@ export function AuthPage() {
     }
   };
 
-  const handleSlackLogin = () => {
-    toast.info('Slack Sign-In coming soon!');
+  const handleSlackLogin = async () => {
+    try {
+      setLoading(true);
+      await signInWithSlack();
+      toast.success('Redirecting to Slack...');
+    } catch (error) {
+      console.error('Slack login error:', error);
+      toast.error(error.message || 'Failed to sign in with Slack');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGithubLogin = async () => {
