@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Notifications from './pages/Notifications';
 import Integrations from './pages/Integrations';
 import OAuthCallback from './pages/0AuthCallback';
 import Diagnostics from './pages/Diagnostics';
@@ -52,6 +53,18 @@ function App() {
                   <Route index element={<Dashboard />} />
                 </Route>
 
+                {/* Protected notifications route with layout */}
+                <Route
+                  path="/notifications"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route index element={<Notifications />} />
+                </Route>
+
                 {/* Protected routes without layout */}
                 <Route
                   path="/dashboard"
@@ -72,28 +85,6 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-
-                <Route
-                  path="/settings"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardLayout />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route index element={<div className="text-white text-center py-20">Settings page coming soon...</div>} />
-                </Route>
-
-                <Route
-                  path="/profile"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardLayout />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route index element={<div className="text-white text-center py-20">Profile page coming soon...</div>} />
-                </Route>
 
                 {/* Catch all */}
                 <Route path="*" element={<Navigate to="/" replace />} />
