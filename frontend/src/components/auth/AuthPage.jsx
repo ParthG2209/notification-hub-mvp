@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../common/Toast';
 import {
   Grid,
-  Apple,
+  MessageSquare,
   AtSign,
   ChevronLeft,
   Github,
@@ -63,8 +63,8 @@ export function AuthPage() {
     }
   };
 
-  const handleAppleLogin = () => {
-    toast.info('Apple Sign-In coming soon!');
+  const handleSlackLogin = () => {
+    toast.info('Slack Sign-In coming soon!');
   };
 
   const handleGithubLogin = async () => {
@@ -278,11 +278,11 @@ export function AuthPage() {
               type="button" 
               size="lg" 
               className="w-full bg-white/10 text-white hover:bg-white/20 border border-white/20" 
-              onClick={handleAppleLogin}
+              onClick={handleSlackLogin}
               disabled={loading}
             >
-              <Apple className="size-4 me-2" />
-              Continue with Apple
+              <MessageSquare className="size-4 me-2" />
+              Continue with Slack
             </Button>
             <Button 
               type="button" 
