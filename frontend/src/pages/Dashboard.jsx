@@ -19,7 +19,6 @@ const Dashboard = () => {
   const [stats, setStats] = useState({
     totalNotifications: 0,
     unreadNotifications: 0,
-    averageResponse: 0,
     todayNotifications: 0
   });
   const [recentNotifications, setRecentNotifications] = useState([]);
@@ -44,7 +43,6 @@ const Dashboard = () => {
       setStats({
         totalNotifications: notifications.length,
         unreadNotifications: unread,
-        averageResponse: 92,
         todayNotifications: today
       });
 
@@ -127,8 +125,8 @@ const Dashboard = () => {
         </button>
       </div>
 
-      {/* Key Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Key Metrics Row - Removed Engagement Rate */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           title="Total Notifications"
           value={stats.totalNotifications}
@@ -146,14 +144,6 @@ const Dashboard = () => {
           colorClass="text-purple-500"
         />
         <StatCard
-          title="Engagement Rate"
-          value={`${stats.averageResponse}%`}
-          icon={Award}
-          trend="up"
-          trendValue="+0.4"
-          colorClass="text-amber-500"
-        />
-        <StatCard
           title="Today"
           value={stats.todayNotifications}
           icon={CheckCircle}
@@ -163,10 +153,10 @@ const Dashboard = () => {
         />
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Bar Chart */}
-        <GlassCard className="lg:col-span-2 flex flex-col">
+      {/* Charts Row - Removed Engagement Gauge */}
+      <div className="grid grid-cols-1 gap-6">
+        {/* Main Bar Chart - Full Width */}
+        <GlassCard className="flex flex-col">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-lg font-semibold text-white">Platform Activity</h3>
@@ -182,9 +172,9 @@ const Dashboard = () => {
             </div>
           </div>
           
-          <div className="flex-1 min-h-[250px] w-full">
+          <div className="flex-1 min-h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={activeUsersData} barSize={40}>
+              <BarChart data={activeUsersData} barSize={60}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                 <XAxis 
                   dataKey="category" 
@@ -221,53 +211,6 @@ const Dashboard = () => {
             </ResponsiveContainer>
           </div>
         </GlassCard>
-
-        {/* Satisfaction Gauge Chart */}
-        <GlassCard className="flex flex-col items-center justify-center relative">
-          <h3 className="absolute top-6 left-6 text-lg font-semibold text-white">Engagement</h3>
-          <div className="relative w-48 h-48 mt-8">
-            <svg className="w-full h-full transform -rotate-90">
-              <circle
-                cx="96"
-                cy="96"
-                r="70"
-                stroke="rgba(255,255,255,0.05)"
-                strokeWidth="12"
-                fill="none"
-              />
-              <circle
-                cx="96"
-                cy="96"
-                r="70"
-                stroke="url(#satisfaction-gradient)"
-                strokeWidth="12"
-                fill="none"
-                strokeDasharray={`${2 * Math.PI * 70 * 0.92} ${2 * Math.PI * 70}`}
-                strokeLinecap="round"
-                className="drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-              />
-              <defs>
-                <linearGradient id="satisfaction-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#3b82f6" />
-                  <stop offset="100%" stopColor="#8b5cf6" />
-                </linearGradient>
-              </defs>
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-4xl font-bold text-white tracking-tighter">92%</span>
-              <span className="text-xs text-gray-400 uppercase tracking-wider font-medium mt-1">Excellent</span>
-            </div>
-          </div>
-          <div className="w-full mt-8 px-4">
-            <div className="flex justify-between text-xs text-gray-400 mb-2">
-              <span>Based on last 30 days</span>
-              <span className="text-green-400">+2.4%</span>
-            </div>
-            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-500 w-[92%] rounded-full"></div>
-            </div>
-          </div>
-        </GlassCard>
       </div>
 
       {/* Recent Notifications List */}
@@ -275,7 +218,7 @@ const Dashboard = () => {
         <div className="p-6 border-b border-white/10 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-white">Recent Notifications</h3>
           <button 
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/notifications')}
             className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
           >
             View All
