@@ -62,18 +62,11 @@ client_id = "env(GOOGLE_CLIENT_ID)"
 secret = "env(GOOGLE_CLIENT_SECRET)"
 redirect_uri = "http://localhost:54321/auth/v1/callback"
 
-# ADDED: Slack OAuth Configuration
+# Slack OAuth Configuration (using Slack OIDC)
 [auth.external.slack_oidc]
 enabled = true
 client_id = "env(SLACK_CLIENT_ID)"
 secret = "env(SLACK_CLIENT_SECRET)"
-redirect_uri = "http://localhost:54321/auth/v1/callback"
-
-# ADDED: HubSpot OAuth Configuration (replacing GitHub)
-[auth.external.hubspot]
-enabled = true
-client_id = "env(HUBSPOT_AUTH_CLIENT_ID)"
-secret = "env(HUBSPOT_AUTH_CLIENT_SECRET)"
 redirect_uri = "http://localhost:54321/auth/v1/callback"
 
 # Edge Function specific configurations
