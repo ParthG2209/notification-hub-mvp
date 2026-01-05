@@ -10,7 +10,6 @@ import { Button } from '../components/common/Button';
 import { supabase } from '../services/supabase/client';
 import { initiateOAuth } from '../services/oauth/oauthHandler';
 import { 
-  Bell, 
   Check, 
   Plus, 
   ExternalLink, 
@@ -19,7 +18,12 @@ import {
   Grid,
   LogOut,
   User as UserIcon,
-  LayoutDashboard
+  LayoutDashboard,
+  Bell,
+  Mail,
+  MessageSquare,
+  FolderOpen,
+  Target
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import '../styles/burger-menu.css';
@@ -114,6 +118,22 @@ export default function Integrations() {
       <path d="M7 16 27 16" />
     </svg>
   );
+
+  // Get icon component for each integration
+  const getIntegrationIcon = (integrationId) => {
+    switch(integrationId) {
+      case 'gmail':
+        return <Mail className="h-6 w-6 text-white" />;
+      case 'slack':
+        return <MessageSquare className="h-6 w-6 text-white" />;
+      case 'google-drive':
+        return <FolderOpen className="h-6 w-6 text-white" />;
+      case 'hubspot':
+        return <Target className="h-6 w-6 text-white" />;
+      default:
+        return <Grid className="h-6 w-6 text-white" />;
+    }
+  };
 
   const handleConnect = async (integrationId) => {
     try {
@@ -304,14 +324,14 @@ export default function Integrations() {
         )}
       </Menu>
 
-      {/* Header */}
+      {/* Header - REMOVED Bell icon */}
       <header className="border-b border-white/10 bg-white/5 backdrop-blur-xl relative z-10">
         <div className="container mx-auto px-5 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 ml-16">
               <div className="flex items-center gap-2.5">
                 <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 p-2.5 rounded-xl border border-white/10">
-                  <Bell className="h-5 w-5 text-blue-400" />
+                  <Grid className="h-5 w-5 text-blue-400" />
                 </div>
                 <h1 className="text-xl font-bold">Integrations</h1>
               </div>
@@ -373,8 +393,8 @@ export default function Integrations() {
                     <div className="relative bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm hover:bg-white/10 transition-all">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-2.5">
-                          <div className={`${integration.color} w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-lg`}>
-                            {integration.icon}
+                          <div className={`${integration.color} w-12 h-12 rounded-xl flex items-center justify-center shadow-lg`}>
+                            {getIntegrationIcon(integration.id)}
                           </div>
                           <div>
                             <h3 className="font-semibold text-lg">{integration.name}</h3>
