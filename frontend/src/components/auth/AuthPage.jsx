@@ -10,7 +10,7 @@ import {
   MessageSquare,
   AtSign,
   ChevronLeft,
-  Github,
+  Target, // Changed from Github to Target (HubSpot icon)
   Moon,
   Sun,
   Loader2,
@@ -21,7 +21,7 @@ import {
 
 export function AuthPage() {
   const navigate = useNavigate();
-  const { signInWithGoogle, signInWithGithub, signInWithSlack, signInWithPassword, signUpWithPassword } = useAuth();
+  const { signInWithGoogle, signInWithSlack, signInWithHubSpot, signInWithPassword, signUpWithPassword } = useAuth();
   const toast = useToast();
   
   const [isLogin, setIsLogin] = useState(true);
@@ -76,14 +76,15 @@ export function AuthPage() {
     }
   };
 
-  const handleGithubLogin = async () => {
+  // UPDATED: Changed from GitHub to HubSpot
+  const handleHubSpotLogin = async () => {
     try {
       setLoading(true);
-      await signInWithGithub();
-      toast.success('Redirecting to GitHub...');
+      await signInWithHubSpot();
+      toast.success('Redirecting to HubSpot...');
     } catch (error) {
-      console.error('GitHub login error:', error);
-      toast.error(error.message || 'Failed to sign in with GitHub');
+      console.error('HubSpot login error:', error);
+      toast.error(error.message || 'Failed to sign in with HubSpot');
     } finally {
       setLoading(false);
     }
@@ -293,15 +294,16 @@ export function AuthPage() {
               <MessageSquare className="size-4 me-2" />
               Continue with Slack
             </Button>
+            {/* UPDATED: Changed from GitHub to HubSpot */}
             <Button 
               type="button" 
               size="lg" 
               className="w-full bg-white/10 text-white hover:bg-white/20 border border-white/20" 
-              onClick={handleGithubLogin}
+              onClick={handleHubSpotLogin}
               disabled={loading}
             >
-              <Github className="size-4 me-2" />
-              Continue with GitHub
+              <Target className="size-4 me-2" />
+              Continue with HubSpot
             </Button>
           </div>
 
@@ -380,7 +382,7 @@ export function AuthPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    onClick={() => setConfirmPassword(!showConfirmPassword)}
                     className="text-gray-400 absolute inset-y-0 end-0 flex items-center justify-center pe-3 hover:text-white"
                   >
                     {showConfirmPassword ? (
