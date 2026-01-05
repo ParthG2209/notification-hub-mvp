@@ -24,28 +24,24 @@ export const IntegrationProvider = ({ children }) => {
       id: 'gmail',
       name: 'Gmail',
       description: 'Receive email notifications',
-      icon: '📧',
       color: 'bg-red-500'
     },
     {
       id: 'slack',
       name: 'Slack',
       description: 'Get Slack messages and mentions',
-      icon: '💬',
       color: 'bg-purple-500'
     },
     {
       id: 'google-drive',
       name: 'Google Drive',
       description: 'Track file changes and shares',
-      icon: '📁',
       color: 'bg-blue-500'
     },
     {
       id: 'hubspot',
       name: 'HubSpot',
       description: 'Monitor CRM activities',
-      icon: '🎯',
       color: 'bg-orange-500'
     }
   ];
