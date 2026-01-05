@@ -118,7 +118,7 @@ export const AuthProvider = ({ children }) => {
     return session;
   };
 
-  // OAuth Sign In
+  // OAuth Sign In - UPDATED for Slack
   const signInWithGoogle = async () => {
     // Clear any stored integration type to ensure this is treated as auth
     sessionStorage.removeItem('oauth_integration');
@@ -134,12 +134,13 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
-  const signInWithGithub = async () => {
+  // UPDATED: Slack Sign In - Use slack_oidc provider
+  const signInWithSlack = async () => {
     // Clear any stored integration type to ensure this is treated as auth
     sessionStorage.removeItem('oauth_integration');
     
     const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'github',
+      provider: 'slack_oidc', // Changed from 'slack' to 'slack_oidc'
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
         skipBrowserRedirect: false
@@ -149,12 +150,13 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
-  const signInWithSlack = async () => {
+  // ADDED: HubSpot Sign In (replacing GitHub)
+  const signInWithHubSpot = async () => {
     // Clear any stored integration type to ensure this is treated as auth
     sessionStorage.removeItem('oauth_integration');
     
     const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'slack',
+      provider: 'hubspot',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
         skipBrowserRedirect: false
@@ -241,8 +243,8 @@ export const AuthProvider = ({ children }) => {
     session,
     loading,
     signInWithGoogle,
-    signInWithGithub,
     signInWithSlack,
+    signInWithHubSpot, // Added HubSpot
     signInWithPassword,
     signUpWithPassword,
     signInWithEmail,
