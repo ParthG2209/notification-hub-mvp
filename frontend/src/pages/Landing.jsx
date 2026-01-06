@@ -41,7 +41,7 @@ const Landing = () => {
         tagline="Stop switching between apps. Notification Hub brings Gmail, Slack, Google Drive, and HubSpot notifications together in one beautiful, unified interface."
         buttonText="Get Started Free"
         onButtonClick={handleGetStarted}
-        imageUrl="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=60"
+        imageUrl="denmo.png"
         navItems={navItems}
       />
       
