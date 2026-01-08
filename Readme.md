@@ -469,4 +469,3 @@ For issues, questions, or contributions:
 
 ---
 
-Built with care by the Notification Hub team
