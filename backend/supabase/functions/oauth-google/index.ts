@@ -261,62 +261,119 @@ Deno.serve(async (req: Request) => {
     }
 
     // Register webhook for Google Drive (if applicable)
-    if (integration_type === 'google-drive') {
-      try {
-        await registerDriveWebhook(access_token, user.id);
-        console.log('Drive webhook registered');
-      } catch (webhookError) {
-        console.error('Failed to register Drive webhook:', webhookError);
-        // Don't fail the entire request if webhook registration fails
-      }
-    }
-
-    console.log(`Google ${integration_type} connected successfully for user ${maskToken(user.id)}`);
-
-    return createResponse({
-      success: true,
-      message: `${integration_type} connected successfully`,
-      integration: {
-        id: integration.id,
-        type: integration.integration_type,
-        status: integration.status,
-        created_at: integration.created_at,
-      },
-    }, 200, req);
-
-  } catch (error) {
-    console.error('OAuth error:', error);
-    return createErrorResponse('Internal server error', 500, (error as Error).message, req);
+    // Register webhook for Google Drive (if applicable)
+if (integration_type === 'google-drive') {
+  try {
+    // ✅ Pass integrationId as third parameter
+    const webhookData = await registerDriveWebhook(access_token, user.id, integration.id);
+    console.log('Drive webhook registered successfully:', webhookData);
+  } catch (webhookError) {
+    console.error('Failed to register Drive webhook:', webhookError);
+    
+    // ✅ Store the error in metadata so you can see it
+    await supabaseAdmin
+      .from('integrations')
+      .update({
+        metadata: {
+          scopes: tokenData.scope?.split(' ') || [],
+          token_type: tokenData.token_type,
+          webhook_error: String(webhookError.message || webhookError),
+          webhook_error_at: new Date().toISOString(),
+        }
+      })
+      .eq('id', integration.id);
+    
+    // ⚠️ Don't throw - let user connect even if webhooks fail
+    console.log('Integration connected but webhooks unavailable');
   }
-});
+}
 
 // Register webhook for Google Drive notifications
-async function registerDriveWebhook(accessToken: string, userId: string): Promise<any> {
+async function registerDriveWebhook(accessToken: string, userId: string, integrationId: string): Promise<any> {
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
   const webhookUrl = `${SUPABASE_URL}/functions/v1/webhook-google-drive`;
 
-  const response = await fetch('https://www.googleapis.com/drive/v3/files/root/watch', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      id: `drive-${userId}-${Date.now()}`,
-      type: 'web_hook',
-      address: webhookUrl,
-      expiration: Date.now() + (7 * 24 * 60 * 60 * 1000), // 7 days
-    }),
+  console.log('Registering Drive webhook:', {
+    userId,
+    webhookUrl,
+    integrationId
   });
+
+  // ✅ First, get the current start page token (required for changes API)
+  const tokenResponse = await fetch(
+    'https://www.googleapis.com/drive/v3/changes/startPageToken',
+    {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!tokenResponse.ok) {
+    const error = await tokenResponse.json();
+    console.error('Failed to get start page token:', error);
+    throw new Error(`Failed to get start page token: ${JSON.stringify(error)}`);
+  }
+
+  const tokenData = await tokenResponse.json();
+  const startPageToken = tokenData.startPageToken;
+
+  console.log('Got start page token:', startPageToken);
+
+  // ✅ Now register the webhook to watch changes
+  const channelId = `drive-${userId}-${Date.now()}`;
+  
+  const response = await fetch(
+    `https://www.googleapis.com/drive/v3/changes/watch?pageToken=${startPageToken}`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        id: channelId,
+        type: 'web_hook',
+        address: webhookUrl,
+        expiration: Date.now() + (7 * 24 * 60 * 60 * 1000), // 7 days
+      }),
+    }
+  );
 
   if (!response.ok) {
     const error = await response.json();
+    console.error('Failed to register Drive webhook:', error);
     throw new Error(`Failed to register Drive webhook: ${JSON.stringify(error)}`);
   }
 
-  return await response.json();
-}
+  const webhookData = await response.json();
+  
+  console.log('Webhook registered successfully:', webhookData);
 
+  // ✅ IMPORTANT: Store webhook metadata in the database
+  const { error: updateError } = await supabaseAdmin
+    .from('integrations')
+    .update({
+      metadata: {
+        scopes: tokenData.scope?.split(' ') || [],
+        token_type: 'Bearer',
+        // Add webhook info
+        webhook_channel_id: webhookData.id,
+        webhook_resource_id: webhookData.resourceId,
+        webhook_expiration: webhookData.expiration,
+        webhook_registered_at: new Date().toISOString(),
+        start_page_token: startPageToken,
+      }
+    })
+    .eq('id', integrationId);
+
+  if (updateError) {
+    console.error('Failed to update integration metadata:', updateError);
+    throw new Error(`Failed to store webhook metadata: ${updateError.message}`);
+  }
+
+  return webhookData;
+}
 // Fetch initial Gmail messages
 async function fetchInitialGmailMessages(accessToken: string, integrationId: string, userId: string): Promise<void> {
   try {
