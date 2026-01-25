@@ -261,32 +261,50 @@ Deno.serve(async (req: Request) => {
     }
 
     // Register webhook for Google Drive (if applicable)
-    // Register webhook for Google Drive (if applicable)
-if (integration_type === 'google-drive') {
-  try {
-    // ✅ Pass integrationId as third parameter
-    const webhookData = await registerDriveWebhook(access_token, user.id, integration.id);
-    console.log('Drive webhook registered successfully:', webhookData);
-  } catch (webhookError) {
-    console.error('Failed to register Drive webhook:', webhookError);
-    
-    // ✅ Store the error in metadata so you can see it
-    await supabaseAdmin
-      .from('integrations')
-      .update({
-        metadata: {
-          scopes: tokenData.scope?.split(' ') || [],
-          token_type: tokenData.token_type,
-          webhook_error: String(webhookError.message || webhookError),
-          webhook_error_at: new Date().toISOString(),
-        }
-      })
-      .eq('id', integration.id);
-    
-    // ⚠️ Don't throw - let user connect even if webhooks fail
-    console.log('Integration connected but webhooks unavailable');
+    if (integration_type === 'google-drive') {
+      try {
+        // Pass integrationId as third parameter
+        const webhookData = await registerDriveWebhook(access_token, user.id, integration.id);
+        console.log('Drive webhook registered successfully:', webhookData);
+      } catch (webhookError) {
+        console.error('Failed to register Drive webhook:', webhookError);
+        
+        // Store the error in metadata so you can see it
+        await supabaseAdmin
+          .from('integrations')
+          .update({
+            metadata: {
+              scopes: tokenData.scope?.split(' ') || [],
+              token_type: tokenData.token_type,
+              webhook_error: String(webhookError.message || webhookError),
+              webhook_error_at: new Date().toISOString(),
+            }
+          })
+          .eq('id', integration.id);
+        
+        // Don't throw - let user connect even if webhooks fail
+        console.log('Integration connected but webhooks unavailable');
+      }
+    }
+
+    console.log(`Google ${integration_type} connected successfully for user ${maskToken(user.id)}`);
+
+    return createResponse({
+      success: true,
+      message: `${integration_type} connected successfully`,
+      integration: {
+        id: integration.id,
+        type: integration.integration_type,
+        status: integration.status,
+        created_at: integration.created_at,
+      },
+    }, 200, req);
+
+  } catch (error) {
+    console.error('OAuth error:', error);
+    return createErrorResponse('Internal server error', 500, (error as Error).message, req);
   }
-}
+});
 
 // Register webhook for Google Drive notifications
 async function registerDriveWebhook(accessToken: string, userId: string, integrationId: string): Promise<any> {
@@ -299,7 +317,7 @@ async function registerDriveWebhook(accessToken: string, userId: string, integra
     integrationId
   });
 
-  // ✅ First, get the current start page token (required for changes API)
+  // First, get the current start page token (required for changes API)
   const tokenResponse = await fetch(
     'https://www.googleapis.com/drive/v3/changes/startPageToken',
     {
@@ -320,7 +338,7 @@ async function registerDriveWebhook(accessToken: string, userId: string, integra
 
   console.log('Got start page token:', startPageToken);
 
-  // ✅ Now register the webhook to watch changes
+  // Now register the webhook to watch changes
   const channelId = `drive-${userId}-${Date.now()}`;
   
   const response = await fetch(
@@ -350,7 +368,7 @@ async function registerDriveWebhook(accessToken: string, userId: string, integra
   
   console.log('Webhook registered successfully:', webhookData);
 
-  // ✅ IMPORTANT: Store webhook metadata in the database
+  // IMPORTANT: Store webhook metadata in the database
   const { error: updateError } = await supabaseAdmin
     .from('integrations')
     .update({
@@ -374,6 +392,7 @@ async function registerDriveWebhook(accessToken: string, userId: string, integra
 
   return webhookData;
 }
+
 // Fetch initial Gmail messages
 async function fetchInitialGmailMessages(accessToken: string, integrationId: string, userId: string): Promise<void> {
   try {
