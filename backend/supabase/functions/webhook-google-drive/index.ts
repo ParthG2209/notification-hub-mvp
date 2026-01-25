@@ -10,8 +10,11 @@ interface DriveChange {
     mimeType: string;
     modifiedTime: string;
     owners: any[];
+    trashed?: boolean;
   };
-  type?: string;
+  fileId?: string;
+  removed?: boolean;
+  changeType?: string;
 }
 
 Deno.serve(async (req: Request) => {
@@ -29,16 +32,18 @@ Deno.serve(async (req: Request) => {
       channelId,
       resourceState,
       resourceId,
+      headers: Object.fromEntries(req.headers.entries()),
     });
 
     // Verify the webhook (basic verification)
     if (!channelId || !resourceState) {
+      console.error('Invalid webhook request - missing headers');
       return createErrorResponse('Invalid webhook request', 400);
     }
 
     // Handle sync notification (initial setup confirmation)
     if (resourceState === 'sync') {
-      console.log('Sync notification received');
+      console.log('Sync notification received - webhook verified by Google');
       return createResponse({ success: true, message: 'Sync acknowledged' });
     }
 
@@ -50,6 +55,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const userId = userIdMatch[1];
+    console.log('Processing webhook for user:', userId);
 
     // Get the integration for this user
     const { data: integration, error: integrationError } = await supabaseAdmin
@@ -65,27 +71,44 @@ Deno.serve(async (req: Request) => {
       return createErrorResponse('Integration not found', 404);
     }
 
+    console.log('Found integration:', {
+      id: integration.id,
+      hasToken: !!integration.access_token,
+      hasPageToken: !!integration.metadata?.start_page_token,
+    });
+
     // Decrypt access token
     const accessToken = decryptToken(integration.access_token);
 
+    // Get the stored page token
+    const pageToken = integration.metadata?.start_page_token || '1';
+
+    console.log('Fetching changes from Google Drive...');
+
     // Fetch changed files from Google Drive API
-    const changes = await fetchDriveChanges(accessToken, resourceId || '1');
+    const changes = await fetchDriveChanges(accessToken, pageToken);
+
+    console.log(`Found ${changes.length} changes`);
 
     // Create notifications for each change
+    let notificationsCreated = 0;
     for (const change of changes) {
-      await createDriveNotification(userId, integration.id, change);
+      const created = await createDriveNotification(userId, integration.id, change);
+      if (created) notificationsCreated++;
     }
 
-    console.log(`Processed ${changes.length} Drive changes for user ${userId}`);
+    console.log(`Created ${notificationsCreated} notifications for user ${userId}`);
 
     return createResponse({
       success: true,
       message: 'Webhook processed',
       changes: changes.length,
+      notifications: notificationsCreated,
     });
 
   } catch (error) {
     console.error('Webhook error:', error);
+    console.error('Stack:', (error as Error).stack);
     return createErrorResponse('Internal server error', 500, (error as Error).message);
   }
 });
@@ -93,10 +116,12 @@ Deno.serve(async (req: Request) => {
 // Fetch file changes from Google Drive
 async function fetchDriveChanges(accessToken: string, startPageToken: string): Promise<DriveChange[]> {
   try {
+    console.log('Fetching changes with pageToken:', startPageToken);
+    
     const url = new URL('https://www.googleapis.com/drive/v3/changes');
     url.searchParams.append('pageToken', startPageToken);
     url.searchParams.append('pageSize', '100');
-    url.searchParams.append('fields', 'changes(file(id,name,mimeType,modifiedTime,owners)),newStartPageToken');
+    url.searchParams.append('fields', 'changes(file(id,name,mimeType,modifiedTime,owners,trashed),fileId,removed,changeType),newStartPageToken');
 
     const response = await fetch(url.toString(), {
       headers: {
@@ -105,49 +130,104 @@ async function fetchDriveChanges(accessToken: string, startPageToken: string): P
     });
 
     if (!response.ok) {
-      throw new Error(`Drive API error: ${response.status}`);
+      const error = await response.json();
+      console.error('Drive API error:', error);
+      throw new Error(`Drive API error: ${response.status} - ${JSON.stringify(error)}`);
     }
 
     const data = await response.json();
-    return data.changes || [];
+    
+    console.log('Drive API response:', {
+      changesCount: data.changes?.length || 0,
+      newStartPageToken: data.newStartPageToken,
+    });
+
+    // Filter out removed/trashed files
+    const validChanges = (data.changes || []).filter((change: DriveChange) => 
+      !change.removed && !change.file?.trashed && change.file
+    );
+
+    console.log(`Filtered to ${validChanges.length} valid changes (removed trashed/deleted)`);
+
+    return validChanges;
   } catch (error) {
     console.error('Failed to fetch Drive changes:', error);
+    console.error('Stack:', (error as Error).stack);
     return [];
   }
 }
 
 // Create notification for Drive change
-async function createDriveNotification(userId: string, integrationId: string, change: DriveChange): Promise<void> {
-  const file = change.file;
-  
-  if (!file) {
-    return;
-  }
+async function createDriveNotification(userId: string, integrationId: string, change: DriveChange): Promise<boolean> {
+  try {
+    const file = change.file;
+    
+    if (!file) {
+      console.log('No file in change, skipping');
+      return false;
+    }
 
-  const title = `File ${change.type || 'updated'}: ${file.name}`;
-  const body = `${file.name} was modified at ${new Date(file.modifiedTime).toLocaleString()}`;
-
-  const { error } = await supabaseAdmin
-    .from('notifications')
-    .insert({
-      user_id: userId,
-      integration_id: integrationId,
-      title,
-      body,
-      source: 'google-drive',
-      source_id: file.id,
-      read: false,
-      metadata: {
-        file_id: file.id,
-        file_name: file.name,
-        mime_type: file.mimeType,
-        modified_time: file.modifiedTime,
-        owners: file.owners,
-        change_type: change.type,
-      },
+    console.log('Processing file change:', {
+      fileId: file.id,
+      fileName: file.name,
+      changeType: change.changeType,
     });
 
-  if (error) {
+    // Check if notification already exists
+    const { data: existing } = await supabaseAdmin
+      .from('notifications')
+      .select('id')
+      .eq('source_id', file.id)
+      .eq('user_id', userId)
+      .single();
+
+    if (existing) {
+      console.log('Notification already exists for file:', file.id);
+      return false;
+    }
+
+    // Determine change type
+    const changeType = change.changeType || 'updated';
+    const actionText = changeType === 'file' ? 'updated' : changeType;
+    
+    const title = `File ${actionText}: ${file.name}`;
+    const body = `${file.name} was modified at ${new Date(file.modifiedTime).toLocaleString()}`;
+
+    console.log('Creating notification:', {
+      title,
+      fileId: file.id,
+    });
+
+    const { error } = await supabaseAdmin
+      .from('notifications')
+      .insert({
+        user_id: userId,
+        integration_id: integrationId,
+        title,
+        body,
+        source: 'google-drive',
+        source_id: file.id,
+        read: false,
+        metadata: {
+          file_id: file.id,
+          file_name: file.name,
+          mime_type: file.mimeType,
+          modified_time: file.modifiedTime,
+          owners: file.owners,
+          change_type: changeType,
+        },
+      });
+
+    if (error) {
+      console.error('Failed to create notification:', error);
+      return false;
+    }
+
+    console.log('✅ Notification created successfully for:', file.name);
+    return true;
+  } catch (error) {
     console.error('Failed to create notification:', error);
+    console.error('Stack:', (error as Error).stack);
+    return false;
   }
 }
