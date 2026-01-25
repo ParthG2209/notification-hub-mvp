@@ -36,13 +36,14 @@ const OAUTH_CONFIGS = {
     prompt: 'consent',
   },
   'google-drive': {
-    authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-    clientId: GOOGLE_CLIENT_ID,
-    scope: 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email',
-    responseType: 'code',
-    accessType: 'offline',
-    prompt: 'consent',
-  },
+  authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+  clientId: GOOGLE_CLIENT_ID,
+  // ✅ Add drive.metadata.readonly scope for changes API
+  scope: 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/userinfo.email',
+  responseType: 'code',
+  accessType: 'offline',
+  prompt: 'consent',
+},
   slack: {
     authUrl: 'https://slack.com/oauth/v2/authorize',
     clientId: SLACK_CLIENT_ID,
